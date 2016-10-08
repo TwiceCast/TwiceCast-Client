@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/logos">
+        <file>TwiceCastV2.png</file>
+    </qresource>
+</RCC>

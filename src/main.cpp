@@ -1,11 +1,16 @@
-#include "MainWindow.hpp"
 #include <QApplication>
+#include "ConnectionWindow.hpp"
+#include "MainWindow.hpp"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+    ConnectionWindow connect;
+    MainWindow *main;
 
-    return a.exec();
+    if (connect.exec() == QDialog::Rejected)
+        return (1);
+    main = new MainWindow(/*connect.retrieveData()*/);
+    main->show();
+    return (a.exec());
 }

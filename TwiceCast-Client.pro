@@ -12,13 +12,15 @@ TARGET = TwiceCast-Client
 TEMPLATE = app
 
 
-SOURCES += main.cpp\
-        MainWindow.cpp \
-    src/main.cpp \
-    src/MainWindow.cpp
+SOURCES += src/main.cpp \
+    src/MainWindow.cpp \
+    src/ConnectionWindow.cpp
 
-HEADERS  += MainWindow.hpp \
-    include/MainWindow.hpp
+HEADERS  += include/MainWindow.hpp \
+    include/ConnectionWindow.hpp
 
-FORMS    += mainwindow.ui \
-    ui/mainwindow.ui
+FORMS    += ui/mainwindow.ui \
+    ui/connectionwindow.ui
+
+RESOURCES += \
+    pictures.qrc
