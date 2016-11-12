@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QFileSystemWatcher>
 #include <QFileDialog>
+#include <QTreeWidget>
 
 namespace Ui {
 class MainWindow;
@@ -13,6 +14,11 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+private:
+    QStringList getFileList(const QString &path, bool recursively = false) const;
+    void updateTreeView(void) const;
+    QTreeWidgetItem *getTreeItem(const QString &) const;
+
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -20,8 +26,7 @@ public:
 private slots:
     void directoryWatchedChanged(const QString &);
     void fileWatchedChanged(const QString &);
-
-    void on_buttonChangeWatchedDirectory_clicked();
+    void on_actionNewProject_triggered();
 
 private:
     Ui::MainWindow *m_ui;

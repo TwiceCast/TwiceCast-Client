@@ -23,7 +23,7 @@
    <string>Connection</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
-   <item>
+   <item alignment="Qt::AlignBottom">
     <widget class="QLabel" name="Logo">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">

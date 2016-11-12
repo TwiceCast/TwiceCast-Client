@@ -24,3 +24,5 @@ FORMS    += ui/mainwindow.ui \
 
 RESOURCES += \
     pictures.qrc
+
+INCLUDEPATH += include
