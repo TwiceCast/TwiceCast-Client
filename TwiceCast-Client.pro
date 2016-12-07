@@ -8,21 +8,23 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = TwiceCast-Client
+TARGET = TwiceCast
 TEMPLATE = app
 
 
 SOURCES += src/main.cpp \
     src/MainWindow.cpp \
-    src/ConnectionWindow.cpp
+    src/ConnectionWindow.cpp \
+    src/ProjectCreationDialog.cpp
 
 HEADERS  += include/MainWindow.hpp \
-    include/ConnectionWindow.hpp
+    include/ConnectionWindow.hpp \
+    include/ProjectCreationDialog.hpp
 
 FORMS    += ui/mainwindow.ui \
-    ui/connectionwindow.ui
+    ui/connectionwindow.ui \
+    ui/projectcreationdialog.ui
 
-RESOURCES += \
-    pictures.qrc
+RESOURCES += pictures.qrc
 
 INCLUDEPATH += include
