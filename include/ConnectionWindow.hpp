@@ -16,7 +16,8 @@ public:
     ~ConnectionWindow();
 
 private slots:
-    void on_connectionButton_clicked();
+    void on_ConnectionButton_clicked();
+    void on_ExitButton_clicked();
 
 private:
     Ui::ConnectionWindow *m_ui;

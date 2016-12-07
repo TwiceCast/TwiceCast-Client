@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     MainWindow *main;
 
     if (connect.exec() == QDialog::Rejected)
-        return (1);
+        return (0);
     main = new MainWindow(/*connect.retrieveData()*/);
     main->show();
     return (a.exec());

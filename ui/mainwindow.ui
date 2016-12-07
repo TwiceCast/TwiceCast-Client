@@ -95,7 +95,7 @@
      </layout>
     </item>
     <item row="0" column="0" alignment="Qt::AlignHCenter">
-     <widget class="QLabel" name="label">
+     <widget class="QLabel" name="titleLabel">
       <property name="font">
        <font>
         <pointsize>14</pointsize>
@@ -105,7 +105,7 @@
        </font>
       </property>
       <property name="text">
-       <string>Project Name</string>
+       <string>Select a Project</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -129,6 +129,8 @@
     </property>
     <addaction name="actionNewProject"/>
     <addaction name="actionOpenProject"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -141,6 +143,11 @@
   <action name="actionOpenProject">
    <property name="text">
     <string>Open Project (Not Functionnal)</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
    </property>
   </action>
  </widget>

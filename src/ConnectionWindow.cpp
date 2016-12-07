@@ -15,9 +15,14 @@ ConnectionWindow::~ConnectionWindow()
     delete (m_ui);
 }
 
-void ConnectionWindow::on_connectionButton_clicked()
+void ConnectionWindow::on_ConnectionButton_clicked()
 {
 //    if (!this->userExists())
 //        return;
     this->accept();
+}
+
+void ConnectionWindow::on_ExitButton_clicked()
+{
+    this->reject();
 }
