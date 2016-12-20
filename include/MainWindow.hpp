@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QFileSystemWatcher>
 #include <QTreeWidget>
+#include <QMessageBox>
+#include <QRegExp>
 
 #include "ProjectCreationDialog.hpp"
 
@@ -16,14 +18,17 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 private:
-    QStringList getFileList(const QString &path, bool recursively = false) const;
+    QStringList getFileList(const QString &, bool recursively = false) const;
     QTreeWidgetItem *getTreeItem(const QString &) const;
-    QList<QTreeWidgetItem *> getRemovedPaths(QTreeWidgetItem *item, const QStringList &list) const;
-    QList<QString> getAddedPaths(QTreeWidgetItem *item, const QStringList &list) const;
+    QList<QTreeWidgetItem *> getRemovedPaths(QTreeWidgetItem *, const QStringList &) const;
+    QList<QString> getAddedPaths(QTreeWidgetItem *, const QStringList &) const;
+    QList<QTreeWidgetItem *> findItems(QTreeWidgetItem *, int, const QString &) const;
 
 private:
-    void removeByPath(QTreeWidgetItem *item, const QString &path);
-    void checkPath(QTreeWidgetItem *item, const QString &path, const QStringList &list);
+    void removeByPath(QTreeWidgetItem *, const QString &);
+    void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
+    void applyFont(QTreeWidgetItem *);
+    void resetFont(QTreeWidgetItem *);
 
 public:
     explicit MainWindow(QWidget *parent = 0);
@@ -32,8 +37,10 @@ public:
 private slots:
     void directoryWatchedChanged(const QString &);
     void fileWatchedChanged(const QString &);
+    void addPathIgnored(QTreeWidgetItem *, int);
+    void checkTreeIgnored(void);
     void projectCreated(void);
-    void on_actionExit_triggered();
+    void on_actionExit_triggered(void);
 
 private:
     Ui::MainWindow *m_ui;
