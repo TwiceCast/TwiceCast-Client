@@ -16,7 +16,7 @@ install:
 script:
   - source /opt/qt55/bin/qt55-env.sh
   - if [ "$CXX" = "g++" ]; then /opt/qt55/bin/qmake; fi
-  - if [ "$CXX" = "clang++"]; then /opt/qt55/bin/qmake -spec linux-clang; fi
+  - if [ "$CXX" = "clang++" ]; then /opt/qt55/bin/qmake -spec linux-clang; fi
   - make
 
 addons:
