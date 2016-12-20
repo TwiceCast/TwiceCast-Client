@@ -32,3 +32,5 @@ FORMS    += ui/mainwindow.ui \
 RESOURCES += pictures.qrc
 
 INCLUDEPATH += include
+
+CONFIG += c++11
