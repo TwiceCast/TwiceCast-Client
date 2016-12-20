@@ -8,6 +8,7 @@
 #include <QRegExp>
 
 #include "ProjectCreationDialog.hpp"
+#include "IgnoredAdderDialog.hpp"
 
 namespace Ui {
 class MainWindow;
@@ -40,12 +41,16 @@ private slots:
     void addPathIgnored(QTreeWidgetItem *, int);
     void checkTreeIgnored(void);
     void projectCreated(void);
+    void addIgnored(void);
     void on_actionExit_triggered(void);
+
+    void on_removeButton_pressed();
 
 private:
     Ui::MainWindow *m_ui;
     QFileSystemWatcher m_watch;
     ProjectCreationDialog m_creation;
+    IgnoredAdderDialog m_ignoredAdder;
     QString m_pathWatched;
 };
 

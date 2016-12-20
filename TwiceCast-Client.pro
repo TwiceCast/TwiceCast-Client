@@ -16,15 +16,18 @@ TEMPLATE = app
 SOURCES += src/main.cpp \
     src/MainWindow.cpp \
     src/ConnectionWindow.cpp \
-    src/ProjectCreationDialog.cpp
+    src/ProjectCreationDialog.cpp \
+    src/IgnoredAdderDialog.cpp
 
 HEADERS  += include/MainWindow.hpp \
     include/ConnectionWindow.hpp \
-    include/ProjectCreationDialog.hpp
+    include/ProjectCreationDialog.hpp \
+    include/IgnoredAdderDialog.hpp
 
 FORMS    += ui/mainwindow.ui \
     ui/connectionwindow.ui \
-    ui/projectcreationdialog.ui
+    ui/projectcreationdialog.ui \
+    ui/ignoredadderdialog.ui
 
 RESOURCES += pictures.qrc
 

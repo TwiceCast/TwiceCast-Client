@@ -5,14 +5,20 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     m_ui(new Ui::MainWindow),
-    m_pathWatched("")
+    m_pathWatched(""),
+    m_creation(this),
+    m_ignoredAdder(this)
 {
     this->m_ui->setupUi(this);
+    this->m_ignoredAdder.setTreeFile(this->m_ui->treeFile);
+    this->m_ui->addButton->setEnabled(false);
     connect(this->m_ui->actionNewProject, SIGNAL(triggered()), &this->m_creation, SLOT(show()));
+    connect(this->m_ui->addButton, SIGNAL(pressed()), &this->m_ignoredAdder, SLOT(show()));
     connect(&this->m_creation, SIGNAL(accepted()), this, SLOT(projectCreated()));
+    connect(&this->m_ignoredAdder, SIGNAL(accepted()), this, SLOT(addIgnored()));
     connect(&this->m_watch, SIGNAL(directoryChanged(QString)), this, SLOT(directoryWatchedChanged(QString)));
     connect(&this->m_watch, SIGNAL(fileChanged(QString)), this, SLOT(fileWatchedChanged(QString)));
-    connect(this->m_ui->treeFile, SIGNAL(itemChanged(QTreeWidgetItem *, int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
+    connect(this->m_ui->treeFile, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex,int,int)), this, SLOT(checkTreeIgnored()));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SLOT(checkTreeIgnored()));
 }
@@ -164,20 +170,20 @@ void MainWindow::addPathIgnored(QTreeWidgetItem *item, int column)
     }
     else if (item->data(column, Qt::CheckStateRole) == Qt::Checked)
         for (int i = 0; i < this->m_ui->listIgnored->count();) {
-            regexp.setPattern("*" + this->m_ui->listIgnored->item(i)->text());
+            regexp.setPattern("*/" + this->m_ui->listIgnored->item(i)->text());
             if (this->m_ui->listIgnored->item(i)->data(Qt::UserRole).isValid() &&
                     this->m_ui->listIgnored->item(i)->data(Qt::UserRole).toString() == item->data(2, Qt::DisplayRole).toString())
-                delete this->m_ui->listIgnored->item(i);
-            else if (this->m_ui->listIgnored->item(i)->data(Qt::UserRole).isValid() &&
-                     this->m_ui->listIgnored->item(i)->data(Qt::UserRole).toString() == "" &&
+                delete (this->m_ui->listIgnored->item(i));
+            else if ((!this->m_ui->listIgnored->item(i)->data(Qt::UserRole).isValid() ||
+                      this->m_ui->listIgnored->item(i)->data(Qt::UserRole).toString() == "") &&
                      regexp.exactMatch(item->data(2, Qt::DisplayRole).toString())) {
                 if (QMessageBox::warning(this, "Remove path matching",
                                          "There is a conflict for reactivating the item with : " +
                                          this->m_ui->listIgnored->item(i)->text() + "\nDelete?",
                                          QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
-                    delete this->m_ui->listIgnored->item(i);
+                    delete (this->m_ui->listIgnored->item(i));
                 else
-                    i++;
+                    return;
             }
             else
                 i++;
@@ -187,11 +193,12 @@ void MainWindow::addPathIgnored(QTreeWidgetItem *item, int column)
 QList<QTreeWidgetItem *> MainWindow::findItems(QTreeWidgetItem *item, int column, const QString &check) const
 {
     QList<QTreeWidgetItem *> list;
-    QRegExp regexp("*" + check);
+    QRegExp regexp("*/" + this->m_ui->treeFile->topLevelItem(0)->text(0) + "/" + check);
 
     regexp.setPatternSyntax(QRegExp::Wildcard);
     regexp.setCaseSensitivity(Qt::CaseSensitive);
-    if (regexp.exactMatch(item->text(column)))
+    if (item != this->m_ui->treeFile->topLevelItem(0) &&
+            (regexp.exactMatch(item->text(column)) || check == item->text(column)))
         list.append(item);
     for (int i = 0; i < item->childCount(); i++)
         list.append(this->findItems(item->child(i), column, check));
@@ -215,6 +222,11 @@ void MainWindow::applyFont(QTreeWidgetItem *item)
 
     for (int i = 0; i < item->childCount(); i++)
     {
+        QFont fontChild(item->child(i)->font(0));
+
+        fontChild.setStrikeOut(true);
+        if (font.strikeOut())
+            item->child(i)->setFont(0, fontChild);
         allIgnored = allIgnored && item->child(i)->font(0).strikeOut();
         if (item->child(i)->childCount() > 0)
             this->applyFont(item->child(i));
@@ -235,10 +247,12 @@ void MainWindow::checkTreeIgnored(void)
                                (tableItem->data(Qt::UserRole).isValid() && tableItem->data(Qt::UserRole).toString() != ""
                 ? tableItem->data(Qt::UserRole).toString() : tableItem->text()));
         for (auto elem : list) {
-            QFont font(elem->font(1));
+            QFont font(elem->font(0));
 
             font.setStrikeOut(true);
             elem->setFont(0, font);
+            if (elem->data(1, Qt::CheckStateRole) == Qt::Checked)
+                elem->setData(1, Qt::CheckStateRole, Qt::Unchecked);
         }
     }
     this->applyFont(this->m_ui->treeFile->topLevelItem(0));
@@ -251,6 +265,7 @@ void MainWindow::projectCreated(void)
 
     this->m_ui->titleLabel->setText(values[ProjectCreationDialog::TITLE]);
     this->m_pathWatched = values[ProjectCreationDialog::PATH];
+    this->m_ui->addButton->setEnabled(this->m_pathWatched != "");
     if (this->m_pathWatched == "")
         return;
     listNotRemoved = this->m_watch.removePaths(this->m_watch.files());
@@ -266,7 +281,18 @@ void MainWindow::projectCreated(void)
     this->m_ui->treeFile->expandAll();
 }
 
+void MainWindow::addIgnored()
+{
+    this->m_ui->listIgnored->addItem(this->m_ignoredAdder.getPath());
+}
+
 void MainWindow::on_actionExit_triggered(void)
 {
     this->close();
+}
+
+void MainWindow::on_removeButton_pressed()
+{
+    for (auto item : this->m_ui->listIgnored->selectedItems())
+        delete (item);
 }
