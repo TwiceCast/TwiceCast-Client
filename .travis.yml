@@ -1,5 +1,7 @@
 sudo: required
 dist: trusty
+language: cpp
+compiler: g++
 
 before_install:
   - sudo add-apt-repository --yes ppa:beineri/opt-qt551-trusty
@@ -7,11 +9,11 @@ before_install:
 
 install:
   - sudo apt-get -y install qt55[QTPACKAGE]
-  - sudo apt-get install -qq g++-4.8
-  - export CXX="g++-4.8"
+  - sudo apt-get install -qq g++-5
 
 script:
   - source /opt/qt55/bin/qt55-env.sh
   - /opt/qt55/bin/qmake
+  - export CXX="g++-5"
   - make
   
