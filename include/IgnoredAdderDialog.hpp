@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QPushButton>
 #include <QDebug>
+#include <QDir>
 
 namespace Ui {
 class IgnoredAdderDialog;

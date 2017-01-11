@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&this->m_ignoredAdder, SIGNAL(accepted()), this, SLOT(addIgnored()));
     connect(&this->m_watch, SIGNAL(directoryChanged(QString)), this, SLOT(directoryWatchedChanged(QString)));
     connect(&this->m_watch, SIGNAL(fileChanged(QString)), this, SLOT(fileWatchedChanged(QString)));
-    connect(this->m_ui->treeFile, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
+    connect(this->m_ui->treeFile, SIGNAL(itemClicked(QTreeWidgetItem*, int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex,int,int)), this, SLOT(checkTreeIgnored()));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SLOT(checkTreeIgnored()));
 }
@@ -153,6 +153,15 @@ void MainWindow::fileWatchedChanged(const QString &path)
     }
 }
 
+bool MainWindow::matchIgnoredRec(QTreeWidgetItem *item, const QRegExp &regexp) const
+{
+    bool result = regexp.exactMatch(item->data(2, Qt::DisplayRole).toString());
+
+    if (!result && item->parent() != NULL)
+        result = this->matchIgnoredRec(item->parent(), regexp);
+    return (result);
+}
+
 void MainWindow::addPathIgnored(QTreeWidgetItem *item, int column)
 {
     QRegExp regexp;
@@ -176,14 +185,16 @@ void MainWindow::addPathIgnored(QTreeWidgetItem *item, int column)
                 delete (this->m_ui->listIgnored->item(i));
             else if ((!this->m_ui->listIgnored->item(i)->data(Qt::UserRole).isValid() ||
                       this->m_ui->listIgnored->item(i)->data(Qt::UserRole).toString() == "") &&
-                     regexp.exactMatch(item->data(2, Qt::DisplayRole).toString())) {
+                     this->matchIgnoredRec(item, regexp)) {
                 if (QMessageBox::warning(this, "Remove path matching",
                                          "There is a conflict for reactivating the item with : " +
                                          this->m_ui->listIgnored->item(i)->text() + "\nDelete?",
                                          QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
                     delete (this->m_ui->listIgnored->item(i));
-                else
+                else {
+                    this->applyFont(this->m_ui->treeFile->topLevelItem(0));
                     return;
+                }
             }
             else
                 i++;
@@ -211,6 +222,8 @@ void MainWindow::resetFont(QTreeWidgetItem *item)
 
     font.setStrikeOut(false);
     item->setFont(0, font);
+    if (item->data(1, Qt::CheckStateRole) == Qt::Unchecked)
+        item->setData(1, Qt::CheckStateRole, Qt::Checked);
     for (int i = 0; i < item->childCount(); i++)
         this->resetFont(item->child(i));
 }
@@ -225,14 +238,25 @@ void MainWindow::applyFont(QTreeWidgetItem *item)
         QFont fontChild(item->child(i)->font(0));
 
         fontChild.setStrikeOut(true);
-        if (font.strikeOut())
+        if (font.strikeOut()) {
             item->child(i)->setFont(0, fontChild);
+            if (item->child(i)->data(1, Qt::CheckStateRole) == Qt::Checked)
+                item->child(i)->setData(1, Qt::CheckStateRole, Qt::Unchecked);
+        }
         allIgnored = allIgnored && item->child(i)->font(0).strikeOut();
         if (item->child(i)->childCount() > 0)
             this->applyFont(item->child(i));
     }
     font.setStrikeOut(allIgnored);
     item->setFont(0, font);
+}
+
+void MainWindow::uncheckedItemsRec(QTreeWidgetItem *elem)
+{
+    if (elem->data(1, Qt::CheckStateRole) == Qt::Checked)
+        elem->setData(1, Qt::CheckStateRole, Qt::Unchecked);
+    for (int i = 0; i < elem->childCount(); i++)
+        this->uncheckedItemsRec(elem->child(i));
 }
 
 void MainWindow::checkTreeIgnored(void)
@@ -251,8 +275,7 @@ void MainWindow::checkTreeIgnored(void)
 
             font.setStrikeOut(true);
             elem->setFont(0, font);
-            if (elem->data(1, Qt::CheckStateRole) == Qt::Checked)
-                elem->setData(1, Qt::CheckStateRole, Qt::Unchecked);
+            this->uncheckedItemsRec(elem);
         }
     }
     this->applyFont(this->m_ui->treeFile->topLevelItem(0));
@@ -281,7 +304,7 @@ void MainWindow::projectCreated(void)
     this->m_ui->treeFile->expandAll();
 }
 
-void MainWindow::addIgnored()
+void MainWindow::addIgnored(void)
 {
     this->m_ui->listIgnored->addItem(this->m_ignoredAdder.getPath());
 }
@@ -291,7 +314,7 @@ void MainWindow::on_actionExit_triggered(void)
     this->close();
 }
 
-void MainWindow::on_removeButton_pressed()
+void MainWindow::on_removeButton_pressed(void)
 {
     for (auto item : this->m_ui->listIgnored->selectedItems())
         delete (item);

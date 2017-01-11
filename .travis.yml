@@ -14,7 +14,6 @@ install:
 
 script:
   - source /opt/qt55/bin/qt55-env.sh
-  - $CXX --version
   - if [ "$CXX" == "g++" ]; then /opt/qt55/bin/qmake; fi
   - if [ "$CXX" == "clang++" ]; then /opt/qt55/bin/qmake -spec linux-clang; fi
   - make
@@ -27,3 +26,6 @@ addons:
     - gcc-4.8
     - g++-4.8
     - clang
+    
+notifications:
+  slack: pleks-eip:fzwNN3MrxGQ7v6Bza2Bx9apE#travis

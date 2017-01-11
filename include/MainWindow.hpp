@@ -24,12 +24,14 @@ private:
     QList<QTreeWidgetItem *> getRemovedPaths(QTreeWidgetItem *, const QStringList &) const;
     QList<QString> getAddedPaths(QTreeWidgetItem *, const QStringList &) const;
     QList<QTreeWidgetItem *> findItems(QTreeWidgetItem *, int, const QString &) const;
+    bool matchIgnoredRec(QTreeWidgetItem *, const QRegExp &) const;
 
 private:
     void removeByPath(QTreeWidgetItem *, const QString &);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);
+    void uncheckedItemsRec(QTreeWidgetItem *);
 
 public:
     explicit MainWindow(QWidget *parent = 0);
@@ -43,8 +45,7 @@ private slots:
     void projectCreated(void);
     void addIgnored(void);
     void on_actionExit_triggered(void);
-
-    void on_removeButton_pressed();
+    void on_removeButton_pressed(void);
 
 private:
     Ui::MainWindow *m_ui;
