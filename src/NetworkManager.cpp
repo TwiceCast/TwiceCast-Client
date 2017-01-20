@@ -45,6 +45,8 @@ QNetworkReply *NetworkManager::request(const QString &url, const QStringList &pa
         break;
     case QNetworkAccessManager::CustomOperation :
         break;
+    default:
+        reply = NULL;
     }
     return (reply);
 }

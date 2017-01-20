@@ -1,5 +1,5 @@
+#include <QDebug>
 #include "Project.hpp"
-#include <qDebug>
 
 Project::Project(const QString &path, const QString &title) :
     m_path(path),
