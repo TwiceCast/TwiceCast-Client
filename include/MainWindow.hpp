@@ -7,7 +7,9 @@
 #include <QMessageBox>
 #include <QRegExp>
 
+#include "ConnectionWindow.hpp"
 #include "ProjectCreationDialog.hpp"
+#include "ProjectOpenDialog.hpp"
 #include "IgnoredAdderDialog.hpp"
 
 namespace Ui {
@@ -24,34 +26,46 @@ private:
     QList<QTreeWidgetItem *> getRemovedPaths(QTreeWidgetItem *, const QStringList &) const;
     QList<QString> getAddedPaths(QTreeWidgetItem *, const QStringList &) const;
     QList<QTreeWidgetItem *> findItems(QTreeWidgetItem *, int, const QString &) const;
+    bool matchIgnoredRec(QTreeWidgetItem *, const QRegExp &) const;
 
 private:
+    void clearWatcher(void);
+    void initWatcher(void);
+    void initIgnored(void);
     void removeByPath(QTreeWidgetItem *, const QString &);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);
+    void uncheckedItemsRec(QTreeWidgetItem *);
 
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+public:
+    int connectUser(void);
+
 private slots:
     void directoryWatchedChanged(const QString &);
     void fileWatchedChanged(const QString &);
     void addPathIgnored(QTreeWidgetItem *, int);
-    void checkTreeIgnored(void);
+    void checkTreeIgnored(bool save = true);
     void projectCreated(void);
+    void projectOpen(void);
     void addIgnored(void);
     void on_actionExit_triggered(void);
-
-    void on_removeButton_pressed();
+    void on_removeButton_pressed(void);
+    void on_actionDisconnect_triggered(void);
 
 private:
     Ui::MainWindow *m_ui;
+    NetworkManager *m_network;
     QFileSystemWatcher m_watch;
     ProjectCreationDialog m_creation;
+    ProjectOpenDialog m_open;
+    ConnectionWindow m_connect;
     IgnoredAdderDialog m_ignoredAdder;
-    QString m_pathWatched;
+    Project *m_project;
 };
 
 #endif // MAINWINDOW_HPP

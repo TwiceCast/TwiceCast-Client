@@ -5,6 +5,8 @@
 #include <QDialog>
 #include <QMap>
 
+#include "Project.hpp"
+
 namespace Ui {
 class ProjectCreationDialog;
 }
@@ -27,8 +29,10 @@ public:
 private slots:
     void on_browseButton_clicked();
 
+    void on_linePath_textChanged(const QString &arg1);
+
 public:
-    QMap<ProjectCreationDialog::ProjectSettings, QString> getValues() const;
+    Project *getProject() const;
 
 private:
     Ui::ProjectCreationDialog *m_ui;

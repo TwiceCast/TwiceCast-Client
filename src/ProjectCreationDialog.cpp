@@ -24,11 +24,12 @@ void ProjectCreationDialog::on_browseButton_clicked(void)
     this->m_ui->linePath->setText(path);
 }
 
-QMap<ProjectCreationDialog::ProjectSettings, QString> ProjectCreationDialog::getValues(void) const
+Project *ProjectCreationDialog::getProject(void) const
 {
-    QMap<ProjectSettings, QString> result;
+    return (new Project(this->m_ui->linePath->text(), this->m_ui->lineTitle->text()));
+}
 
-    result[TITLE] = this->m_ui->lineTitle->text();
-    result[PATH] = this->m_ui->linePath->text();
-    return (result);
+void ProjectCreationDialog::on_linePath_textChanged(const QString &)
+{
+    this->m_ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(this->m_ui->linePath->text() != "");
 }

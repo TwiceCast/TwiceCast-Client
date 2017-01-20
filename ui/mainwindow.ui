@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>806</width>
-    <height>543</height>
+    <width>749</width>
+    <height>583</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,120 +15,124 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="0">
-     <layout class="QFormLayout" name="DetailsLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="textWatchedDirectory">
-        <property name="text">
-         <string>Project Directory :</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="watchedDirectory">
-        <property name="text">
-         <string>None</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="3" column="0">
-     <layout class="QHBoxLayout" name="ListsLayout">
+    <item row="0" column="0">
+     <layout class="QVBoxLayout" name="projectLayout">
       <item>
-       <layout class="QVBoxLayout" name="fileLayout">
-        <item>
-         <widget class="QLabel" name="labelTreeFile">
+       <widget class="QLabel" name="titleLabel">
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+          <underline>true</underline>
+         </font>
+        </property>
+        <property name="text">
+         <string>Select a Project</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="DetailsLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="textWatchedDirectory">
           <property name="text">
-           <string>Project Files :</string>
+           <string>Project Directory :</string>
           </property>
          </widget>
         </item>
-        <item>
-         <widget class="QTreeWidget" name="treeFile">
-          <property name="editTriggers">
-           <set>QAbstractItemView::NoEditTriggers</set>
+        <item row="0" column="1">
+         <widget class="QLabel" name="watchedDirectory">
+          <property name="text">
+           <string>None</string>
           </property>
-          <property name="columnCount">
-           <number>2</number>
-          </property>
-          <attribute name="headerCascadingSectionResizes">
-           <bool>true</bool>
-          </attribute>
-          <attribute name="headerDefaultSectionSize">
-           <number>180</number>
-          </attribute>
-          <attribute name="headerShowSortIndicator" stdset="0">
-           <bool>false</bool>
-          </attribute>
-          <attribute name="headerStretchLastSection">
-           <bool>false</bool>
-          </attribute>
-          <column>
-           <property name="text">
-            <string>File</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Sync</string>
-           </property>
-          </column>
          </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QVBoxLayout" name="ignoredLayout">
+       <layout class="QHBoxLayout" name="listsLayout">
         <item>
-         <widget class="QLabel" name="labelListIgnored">
-          <property name="text">
-           <string>Ignored Patterns :</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QListWidget" name="listIgnored"/>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
+         <layout class="QVBoxLayout" name="fileLayout">
           <item>
-           <widget class="QPushButton" name="addButton">
+           <widget class="QLabel" name="labelTreeFile">
             <property name="text">
-             <string>Add</string>
+             <string>Project Files :</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="removeButton">
+           <widget class="QTreeWidget" name="treeFile">
+            <property name="editTriggers">
+             <set>QAbstractItemView::NoEditTriggers</set>
+            </property>
+            <property name="columnCount">
+             <number>2</number>
+            </property>
+            <attribute name="headerCascadingSectionResizes">
+             <bool>true</bool>
+            </attribute>
+            <attribute name="headerDefaultSectionSize">
+             <number>180</number>
+            </attribute>
+            <attribute name="headerShowSortIndicator" stdset="0">
+             <bool>false</bool>
+            </attribute>
+            <attribute name="headerStretchLastSection">
+             <bool>true</bool>
+            </attribute>
+            <column>
+             <property name="text">
+              <string>File</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Sync</string>
+             </property>
+            </column>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="ignoredLayout">
+          <item>
+           <widget class="QLabel" name="labelListIgnored">
             <property name="text">
-             <string>Remove</string>
+             <string>Ignored Patterns :</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QListWidget" name="listIgnored"/>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <widget class="QPushButton" name="addButton">
+              <property name="text">
+               <string>Add</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="removeButton">
+              <property name="text">
+               <string>Remove</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
        </layout>
       </item>
      </layout>
-    </item>
-    <item row="0" column="0" alignment="Qt::AlignHCenter">
-     <widget class="QLabel" name="titleLabel">
-      <property name="font">
-       <font>
-        <pointsize>14</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-        <underline>true</underline>
-       </font>
-      </property>
-      <property name="text">
-       <string>Select a Project</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
     </item>
    </layout>
   </widget>
@@ -137,7 +141,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>806</width>
+     <width>749</width>
      <height>25</height>
     </rect>
    </property>
@@ -148,6 +152,7 @@
     <addaction name="actionNewProject"/>
     <addaction name="actionOpenProject"/>
     <addaction name="separator"/>
+    <addaction name="actionDisconnect"/>
     <addaction name="actionExit"/>
    </widget>
    <addaction name="menuFile"/>
@@ -160,12 +165,17 @@
   </action>
   <action name="actionOpenProject">
    <property name="text">
-    <string>Open Project (Not Functionnal)</string>
+    <string>Open Project</string>
    </property>
   </action>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionDisconnect">
+   <property name="text">
+    <string>Disconnect</string>
    </property>
   </action>
  </widget>

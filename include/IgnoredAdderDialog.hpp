@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QPushButton>
 #include <QDebug>
+#include <QDir>
 
 namespace Ui {
 class IgnoredAdderDialog;
@@ -16,7 +17,7 @@ class IgnoredAdderDialog : public QDialog
 
 public:
     explicit IgnoredAdderDialog(QWidget *parent = 0);
-    ~IgnoredAdderDialog();
+    ~IgnoredAdderDialog(void);
 
 public:
     QString getPath(void) const;
