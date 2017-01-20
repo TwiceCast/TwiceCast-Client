@@ -9,12 +9,12 @@ IgnoredAdderDialog::IgnoredAdderDialog(QWidget *parent) :
     this->m_ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 }
 
-IgnoredAdderDialog::~IgnoredAdderDialog()
+IgnoredAdderDialog::~IgnoredAdderDialog(void)
 {
     delete m_ui;
 }
 
-QString IgnoredAdderDialog::getPath() const
+QString IgnoredAdderDialog::getPath(void) const
 {
     return (this->m_ui->matchEditLine->text());
 }

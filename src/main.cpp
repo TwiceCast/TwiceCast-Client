@@ -5,12 +5,10 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    ConnectionWindow connect;
-    MainWindow *main;
+    MainWindow main;
 
-    if (connect.exec() == QDialog::Rejected)
+    if (main.connectUser() == QDialog::Rejected)
         return (0);
-    main = new MainWindow(/*connect.retrieveData()*/);
-    main->show();
+    main.show();
     return (a.exec());
 }
