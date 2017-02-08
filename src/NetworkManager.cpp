@@ -15,7 +15,7 @@ NetworkManager::~NetworkManager(void)
 
 QNetworkReply *NetworkManager::request(const QString &url, const QStringList &parameters, QNetworkAccessManager::Operation op)
 {
-    QNetworkReply *reply;
+    QNetworkReply *reply = NULL;
     QNetworkRequest request;
     QString paramsWritten, paramsUrl;
 
@@ -45,8 +45,6 @@ QNetworkReply *NetworkManager::request(const QString &url, const QStringList &pa
         break;
     case QNetworkAccessManager::CustomOperation :
         break;
-    default:
-        reply = NULL;
     }
     return (reply);
 }

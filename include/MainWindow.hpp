@@ -30,8 +30,11 @@ private:
 
 private:
     void clearWatcher(void);
+    void clearIgnored(void);
+    void initProject(void);
     void initWatcher(void);
     void initIgnored(void);
+    void saveLastProject(void);
     void removeByPath(QTreeWidgetItem *, const QString &);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);

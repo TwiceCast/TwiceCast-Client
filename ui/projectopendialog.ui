@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>559</width>
-    <height>315</height>
+    <height>183</height>
    </rect>
   </property>
   <property name="acceptDrops">
@@ -58,38 +58,45 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <layout class="QHBoxLayout" name="pathLayout">
-         <item>
-          <widget class="QLabel" name="pathLabel">
-           <property name="text">
-            <string>Path :</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="pathLine"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pathButton">
-           <property name="text">
-            <string>Browse...</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QLabel" name="oldLabel">
-         <property name="text">
-          <string>Old projects :</string>
+        <widget class="QWidget" name="pathWidget" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
+         <layout class="QHBoxLayout" name="pathLayout">
+          <item>
+           <widget class="QLabel" name="pathLabel">
+            <property name="text">
+             <string>Path :</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="pathLine"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pathButton">
+            <property name="text">
+             <string>Browse...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
-       <item>
-        <widget class="QLabel" name="TODO">
-         <property name="text">
-          <string>Not Functionnal</string>
-         </property>
+       <item alignment="Qt::AlignTop">
+        <widget class="QWidget" name="oldPathWidget" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QLabel" name="oldLabel">
+            <property name="text">
+             <string>Old projects :</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>

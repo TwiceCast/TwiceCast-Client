@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_network(new NetworkManager),
     m_creation(this),
     m_open(this),
-    m_connect(this->m_network, this),
+    m_connect(this->m_network),
     m_ignoredAdder(this),
     m_project(NULL)
 {
@@ -16,6 +16,7 @@ MainWindow::MainWindow(QWidget *parent) :
     this->m_ui->addButton->setEnabled(false);
     this->m_ignoredAdder.setTreeFile(this->m_ui->treeFile);
     connect(this->m_ui->actionNewProject, SIGNAL(triggered()), &this->m_creation, SLOT(show()));
+    connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(init()));
     connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(show()));
     connect(this->m_ui->addButton, SIGNAL(pressed()), &this->m_ignoredAdder, SLOT(show()));
     connect(&this->m_creation, SIGNAL(accepted()), this, SLOT(projectCreated()));
@@ -49,11 +50,24 @@ void MainWindow::clearWatcher(void)
     this->m_ui->treeFile->clear();
 }
 
+void MainWindow::clearIgnored(void)
+{
+    disconnect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+    disconnect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+    this->m_ui->listIgnored->clear();
+    connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+    connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+}
+
+void MainWindow::initProject(void)
+{
+    this->m_ui->addButton->setEnabled(this->m_project != NULL && this->m_project->getPath() != "");
+    this->m_ui->titleLabel->setText((this->m_project == NULL ? "Select a project" : this->m_project->getTitle()));
+    this->m_ui->watchedDirectory->setText((this->m_project == NULL ? "None" : this->m_project->getPath()));
+}
+
 void MainWindow::initWatcher(void)
 {
-    this->m_ui->addButton->setEnabled(this->m_project->getPath() != "");
-    this->m_ui->titleLabel->setText(this->m_project->getTitle());
-    this->m_ui->watchedDirectory->setText(this->m_project->getPath());
     this->m_watch.addPath(this->m_project->getPath());
     this->m_watch.addPaths(this->getFileList(this->m_project->getPath(), true));
     this->m_ui->treeFile->addTopLevelItem(this->getTreeItem(this->m_project->getPath()));
@@ -67,12 +81,32 @@ void MainWindow::initIgnored(void)
 
     disconnect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
     disconnect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
-    this->m_ui->listIgnored->clear();
     for (auto ignore : ignoredList)
         this->m_ui->listIgnored->addItem(ignore);
     this->checkTreeIgnored(false);
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+}
+
+void MainWindow::saveLastProject(void)
+{
+    QFile conf(QCoreApplication::applicationDirPath() + "/.oldPath");
+    QTextStream stream(&conf);
+    QStringList olds;
+    QString line;
+
+    if (!conf.open(QFile::ReadWrite))
+        return;
+    while (!stream.atEnd()) {
+        line = stream.readLine();
+        if (line.trimmed() != "" && line != QDir::cleanPath(this->m_project->getPath() + "/.tcconf"))
+            olds.append(line);
+    }
+    olds.push_front(QDir::cleanPath(this->m_project->getPath() + "/.tcconf"));
+    conf.resize(0);
+    for (auto old : olds)
+        stream << old << "\n";
+    conf.close();
 }
 
 QStringList MainWindow::getFileList(const QString &path, bool recursively) const
@@ -355,8 +389,11 @@ void MainWindow::projectCreated(void)
         delete (this->m_project);
     this->m_project = project;
     this->clearWatcher();
+    this->clearIgnored();
+    this->initProject();
     this->initWatcher();
     this->initIgnored();
+    this->saveLastProject();
 }
 
 void MainWindow::projectOpen(void)
@@ -369,8 +406,11 @@ void MainWindow::projectOpen(void)
         delete (this->m_project);
     this->m_project = project;
     this->clearWatcher();
+    this->clearIgnored();
+    this->initProject();
     this->initWatcher();
     this->initIgnored();
+    this->saveLastProject();
 }
 
 void MainWindow::addIgnored(void)
@@ -392,8 +432,15 @@ void MainWindow::on_removeButton_pressed(void)
 void MainWindow::on_actionDisconnect_triggered(void)
 {
     this->hide();
-    if (this->connectUser() == QDialog::Rejected)
+    if (this->connectUser() == QDialog::Rejected) {
         this->close();
-    else
-        this->show();
+        return;
+    }
+    this->clearWatcher();
+    this->clearIgnored();
+    if (this->m_project != NULL)
+        delete (this->m_project);
+    this->m_project = NULL;
+    this->initProject();
+    this->show();
 }
