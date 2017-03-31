@@ -6,16 +6,16 @@ compiler:
     - clang
 
 before_install:
-  - sudo add-apt-repository --yes ppa:beineri/opt-qt571-trusty
+  - sudo add-apt-repository --yes ppa:beineri/opt-qt58-trusty
   - sudo apt-get update -qq
 
 install:
-  - sudo apt-get -y install qt57[QTPACKAGE]
+  - sudo apt-get -y install qt58[QTPACKAGE]
 
 script:
-  - source /opt/qt57/bin/qt57-env.sh
-  - if [ "$CXX" == "g++" ]; then /opt/qt57/bin/qmake; fi
-  - if [ "$CXX" == "clang++" ]; then /opt/qt57/bin/qmake -spec linux-clang; fi
+  - source /opt/qt58/bin/qt58-env.sh
+  - if [ "$CXX" == "g++" ]; then /opt/qt58/bin/qmake; fi
+  - if [ "$CXX" == "clang++" ]; then /opt/qt58/bin/qmake -spec linux-clang; fi
   - make
 
 addons:
