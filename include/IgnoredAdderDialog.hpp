@@ -7,6 +7,11 @@
 #include <QDebug>
 #include <QDir>
 
+#define COLUMN_NAME 0
+#define COLUMN_PROGRESS 1
+#define COLUMN_CHECKSTATE 2
+#define COLUMN_PATH 3
+
 namespace Ui {
 class IgnoredAdderDialog;
 }

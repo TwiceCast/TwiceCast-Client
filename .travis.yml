@@ -28,4 +28,4 @@ addons:
     - clang
     
 notifications:
-  slack: pleks-eip:fzwNN3MrxGQ7v6Bza2Bx9apE#travis
+  slack: twicecast-eip:fzwNN3MrxGQ7v6Bza2Bx9apE#travis

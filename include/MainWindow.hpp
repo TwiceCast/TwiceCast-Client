@@ -49,13 +49,16 @@ public:
     int connectUser(void);
 
 private slots:
+    void toggleConnection(void);
     void directoryWatchedChanged(const QString &);
     void fileWatchedChanged(const QString &);
     void addPathIgnored(QTreeWidgetItem *, int);
     void checkTreeIgnored(bool save = true);
+    void networkResponse(QNetworkReply *);
     void projectCreated(void);
     void projectOpen(void);
     void addIgnored(void);
+    void authentificate(void);
     void on_actionExit_triggered(void);
     void on_removeButton_pressed(void);
     void on_actionDisconnect_triggered(void);

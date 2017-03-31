@@ -27,12 +27,12 @@ void IgnoredAdderDialog::setTreeFile(QTreeWidget *tree)
 QStringList IgnoredAdderDialog::findItems(QTreeWidgetItem *item, int column, const QString &check) const
 {
     QStringList list;
-    QRegExp regexp("*/" + this->m_tree->topLevelItem(0)->text(0) + "/" + check);
+    QRegExp regexp("*/" + this->m_tree->topLevelItem(0)->text(COLUMN_NAME) + "/" + check);
 
     regexp.setPatternSyntax(QRegExp::Wildcard);
     regexp.setCaseSensitivity(Qt::CaseSensitive);
     if (item != this->m_tree->topLevelItem(0) && regexp.exactMatch(item->text(column)))
-        list.append(item->data(2, Qt::DisplayRole).toString().replace(this->m_tree->topLevelItem(0)->text(2) + "/", ""));
+        list.append(item->data(COLUMN_PATH, Qt::DisplayRole).toString().replace(this->m_tree->topLevelItem(0)->text(COLUMN_PATH) + "/", ""));
     for (int i = 0; i < item->childCount(); i++)
         list.append(this->findItems(item->child(i), column, check));
     return (list);
@@ -44,5 +44,5 @@ void IgnoredAdderDialog::on_matchEditLine_textChanged(const QString &text)
         return;
     this->m_ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(text != "");
     this->m_ui->matchList->clear();
-    this->m_ui->matchList->addItems(this->findItems(this->m_tree->topLevelItem(0), 2, text));
+    this->m_ui->matchList->addItems(this->findItems(this->m_tree->topLevelItem(0), COLUMN_PATH, text));
 }

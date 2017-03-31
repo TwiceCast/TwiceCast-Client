@@ -6,14 +6,13 @@
 
 QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets network
-greaterThan(QT_MAJOR_VERSION, 5){
-    greaterThan(QT_MINOR_VERSION, 3): QT += websockets
+greaterThan(QT_MAJOR_VERSION, 4){
+    QT += widgets network
+    greaterThan(QT_MINOR_VERSION, 2): QT += websockets
 }
 
 TARGET = TwiceCast
 TEMPLATE = app
-
 
 SOURCES += src/main.cpp \
     src/MainWindow.cpp \
@@ -42,4 +41,28 @@ RESOURCES += pictures.qrc
 
 INCLUDEPATH += include
 
+Release:DEFINES += QT_NO_DEBUG_OUTPUT
+
 CONFIG += c++11
+
+Debug:DESTDIR = debug
+Release:DESTDIR = release
+
+!contains(QMAKE_TARGET.arch, x86_64) {
+    win32 : Release:DESTDIR = $${PWD}/build/win32
+    win32-g++ : Release:DESTDIR = $${PWD}/build/linux32
+    unix : !macx : Release:DESTDIR = $${PWD}/build/linux32
+    macx : Release:DESTDIR = $${PWD}/build/macos32
+} else {
+    win32 : Release:DESTDIR = $${PWD}/build/win64
+    win32-g++ : Release:DESTDIR = $${PWD}/build/linux64
+    unix : !macx : Release:DESTDIR = $${PWD}/build/linux64
+    macx : Release:DESTDIR = $${PWD}/build/macos64
+}
+
+win32 : Release:QMAKE_POST_LINK = windeployqt $$DESTDIR
+win32-g++ : Release:QMAKE_POST_LINK = windeployqt $$DESTDIR
+
+target.path = $$DESTDIR
+
+INSTALLS += target
