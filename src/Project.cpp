@@ -126,12 +126,15 @@ bool Project::save(const QString &filename)
     return (true);
 }
 
-Project *Project::open(const QString &path)
+Project *Project::open(const QString &filePath)
 {
-    QFile file(path + "/.tcconf");
-    Project *project = new Project(path);
+    QFile file(filePath);
+    QDir path(filePath);
+    Project *project;
     QXmlStreamReader xml(&file);
 
+    path.cdUp();
+    project = new Project(path.path());
     if (!file.exists())
         return (NULL);
     if (!file.open(QFile::ReadOnly))

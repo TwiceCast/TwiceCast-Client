@@ -13,7 +13,7 @@
     <x>0</x>
     <y>0</y>
     <width>456</width>
-    <height>325</height>
+    <height>345</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -23,7 +23,7 @@
    <string>Connection</string>
   </property>
   <property name="modal">
-   <bool>true</bool>
+   <bool>false</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item alignment="Qt::AlignBottom">
@@ -148,7 +148,7 @@
     </widget>
    </item>
    <item alignment="Qt::AlignHCenter">
-    <widget class="QWidget" name="horizontalWidget" native="true">
+    <widget class="QWidget" name="LoginWidget" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QPushButton" name="ConnectionButton">
@@ -161,6 +161,54 @@
        <widget class="QPushButton" name="ExitButton">
         <property name="text">
          <string>Exit</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QWidget" name="SupWidget" native="true">
+     <layout class="QHBoxLayout" name="SupLayout">
+      <item>
+       <widget class="QLabel" name="InscriptionLabel">
+        <property name="text">
+         <string>&lt;a href=&quot;http://eip.epitech.eu/2018/twicecast/&quot;&gt;S'inscrire&lt;/a&gt;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="openExternalLinks">
+         <bool>true</bool>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::TextBrowserInteraction</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line">
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="ForgottenPasswordLabel">
+        <property name="text">
+         <string>&lt;a href=&quot;http://eip.epitech.eu/2018/twicecast/&quot;&gt;Mot de passe oublié ?&lt;/a&gt;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="openExternalLinks">
+         <bool>true</bool>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::TextBrowserInteraction</set>
         </property>
        </widget>
       </item>

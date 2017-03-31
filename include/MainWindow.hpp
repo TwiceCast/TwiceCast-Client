@@ -30,13 +30,17 @@ private:
 
 private:
     void clearWatcher(void);
+    void clearIgnored(void);
+    void initProject(void);
     void initWatcher(void);
     void initIgnored(void);
+    void saveLastProject(void);
     void removeByPath(QTreeWidgetItem *, const QString &);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);
     void uncheckedItemsRec(QTreeWidgetItem *);
+    void writeFileToWs(QFile &);
 
 public:
     explicit MainWindow(QWidget *parent = 0);
@@ -46,13 +50,16 @@ public:
     int connectUser(void);
 
 private slots:
+    void toggleConnection(void);
     void directoryWatchedChanged(const QString &);
     void fileWatchedChanged(const QString &);
     void addPathIgnored(QTreeWidgetItem *, int);
     void checkTreeIgnored(bool save = true);
+    void networkResponse(QNetworkReply *);
     void projectCreated(void);
     void projectOpen(void);
     void addIgnored(void);
+    void authentificate(void);
     void on_actionExit_triggered(void);
     void on_removeButton_pressed(void);
     void on_actionDisconnect_triggered(void);
