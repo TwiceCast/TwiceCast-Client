@@ -11,6 +11,7 @@ before_install:
 
 install:
   - sudo apt-get -y install qt58[QTPACKAGE]
+  - sudo apt-get -y install qt58websockets
 
 script:
   - source /opt/qt58/bin/qt58-env.sh
