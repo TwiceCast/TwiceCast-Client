@@ -40,6 +40,7 @@ private:
     void applyFont(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);
     void uncheckedItemsRec(QTreeWidgetItem *);
+    void writeFileToWs(QFile &);
 
 public:
     explicit MainWindow(QWidget *parent = 0);

@@ -273,11 +273,35 @@ void MainWindow::directoryWatchedChanged(const QString &path)
     }
 }
 
+void MainWindow::writeFileToWs(QFile &file)
+{
+    QJsonDocument document;
+    QJsonObject object;
+    QString content;
+
+    file.open(QFile::ReadOnly);
+    content = QString::fromStdString(file.readAll().toStdString());
+    object.insert("type", "file");
+    object.insert("name", file.fileName().replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
+    if (content.length() <= 500) {
+        object.insert("content", content);
+        document.setObject(object);
+        this->m_network->sendTextMessage(QString::fromStdString(document.toJson(QJsonDocument::Indented).toStdString()));
+    }
+    else
+        for (int i = 0; i < content.length(); i += 500) {
+            object.insert("content", content.mid(i, 500));
+            object.insert("part", (i / 500) + 1);
+            object.insert("maxPart", (content.length() / 500) + 1);
+            document.setObject(object);
+            this->m_network->sendTextMessage(QString::fromStdString(document.toJson(QJsonDocument::Indented).toStdString()));
+        }
+    file.close();
+}
+
 void MainWindow::fileWatchedChanged(const QString &path)
 {
     QList<QTreeWidgetItem *> list;
-    QJsonDocument document;
-    QJsonObject object;
     QFile file(path);
 
     qDebug() << "File " << path << " has been changed";
@@ -287,15 +311,8 @@ void MainWindow::fileWatchedChanged(const QString &path)
         list = this->findItems(this->m_ui->treeFile->topLevelItem(0), COLUMN_PATH, path);
         qDebug() << list;
         for (auto item : list)
-            if (!item->font(COLUMN_NAME).strikeOut()) {
-                file.open(QFile::ReadOnly);
-                object.insert("type", "file");
-                object.insert("name", file.fileName().replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
-                object.insert("content", QString::fromStdString(file.readAll().toStdString()));
-                document.setObject(object);
-                this->m_network->sendTextMessage(QString::fromStdString(document.toJson(QJsonDocument::Indented).toStdString()));
-                file.close();
-            }
+            if (!item->font(COLUMN_NAME).strikeOut())
+                this->writeFileToWs(file);
     }
 }
 
