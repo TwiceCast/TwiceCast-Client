@@ -480,7 +480,8 @@ void MainWindow::authentificate(void)
     QJsonDocument document;
     QJsonObject object;
 
-    object.insert("type", "auth");
+    object.insert("type", "file");
+    object.insert("subtype", "auth");
     object.insert("username", "test");
     object.insert("project", this->m_project->getTitle());
     document.setObject(object);
