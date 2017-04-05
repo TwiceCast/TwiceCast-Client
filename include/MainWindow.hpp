@@ -36,6 +36,7 @@ private:
     void initIgnored(void);
     void saveLastProject(void);
     void removeByPath(QTreeWidgetItem *, const QString &);
+    void sendRemoveFile(QTreeWidgetItem *);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);

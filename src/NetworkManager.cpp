@@ -147,7 +147,6 @@ void NetworkManager::disconnectWs(void)
 void NetworkManager::pingSending(void)
 {
     this->m_ws->ping();
-    qDebug() << "Ping sent";
     this->m_strike++;
     if (this->m_strike >= 3) {
         //TODO : NETWORK ERROR
@@ -156,11 +155,10 @@ void NetworkManager::pingSending(void)
 
 void NetworkManager::pongReceived(void)
 {
-    qDebug() << "Pong received";
     this->m_strike = 0;
 }
 
 void NetworkManager::messageReceived(const QString &msg)
 {
-    qDebug() << msg;
+    qDebug().noquote() << QString::fromStdString(QJsonDocument::fromJson(msg.toUtf8()).toJson(QJsonDocument::Indented).toStdString());
 }

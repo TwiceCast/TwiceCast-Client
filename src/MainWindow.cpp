@@ -232,6 +232,18 @@ void MainWindow::toggleConnection(void)
     }
 }
 
+void MainWindow::sendRemoveFile(QTreeWidgetItem *remove)
+{
+    QJsonDocument document;
+    QJsonObject object;
+
+    object.insert("type", "file");
+    object.insert("subtype", "delete");
+    object.insert("name", remove->text(COLUMN_PATH).replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
+    document.setObject(object);
+    this->m_network->sendTextMessage(QString::fromUtf8(document.toJson()));
+}
+
 void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QStringList &list)
 {
     if (item->data(COLUMN_PATH, Qt::DisplayRole).toString() == path) {
@@ -240,8 +252,13 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
 
         if (adds.size() == 1 && removes.size() == 1) {
             QFileInfo fi(adds.at(0));
+
+            if (!removes.at(0)->font(COLUMN_NAME).strikeOut())
+                this->sendRemoveFile(removes.at(0));
             removes.at(0)->setData(COLUMN_NAME, Qt::DisplayRole, fi.fileName());
             removes.at(0)->setData(COLUMN_PATH, Qt::DisplayRole, adds.at(0));
+            if (!removes.at(0)->font(COLUMN_NAME).strikeOut())
+                this->writeFileToWs(QFile(adds.at(0)));
             return;
         }
         for (auto add : adds) {
@@ -252,9 +269,15 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
                 newItem->setData(COLUMN_CHECKSTATE, Qt::CheckStateRole, Qt::Checked);
             newItem->setData(COLUMN_PATH, Qt::DisplayRole, add);
             item->addChild(newItem);
+            this->checkTreeIgnored(false);
+            if (!newItem->font(COLUMN_NAME).strikeOut())
+                this->writeFileToWs(QFile(add));
         }
-        for (auto remove : removes)
+        for (auto remove : removes) {
+            if (!remove->font(COLUMN_NAME).strikeOut())
+                this->sendRemoveFile(remove);
             delete remove;
+        }
     }
     else
         for (int i = 0; i < item->childCount(); i++)
@@ -279,14 +302,16 @@ void MainWindow::writeFileToWs(QFile &file)
     QJsonObject object;
     QString content;
 
-    file.open(QFile::ReadOnly);
+    if (!file.open(QFile::ReadOnly))
+        return;
     content = QString::fromStdString(file.readAll().toStdString());
     object.insert("type", "file");
+    object.insert("subtype", "post");
     object.insert("name", file.fileName().replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
     if (content.length() <= 500) {
         object.insert("content", content);
         document.setObject(object);
-        this->m_network->sendTextMessage(QString::fromStdString(document.toJson(QJsonDocument::Indented).toStdString()));
+        this->m_network->sendTextMessage(QString::fromUtf8(document.toJson(QJsonDocument::Indented)));
     }
     else
         for (int i = 0; i < content.length(); i += 500) {
@@ -294,7 +319,7 @@ void MainWindow::writeFileToWs(QFile &file)
             object.insert("part", (i / 500) + 1);
             object.insert("maxPart", (content.length() / 500) + 1);
             document.setObject(object);
-            this->m_network->sendTextMessage(QString::fromStdString(document.toJson(QJsonDocument::Indented).toStdString()));
+            this->m_network->sendTextMessage(QString::fromUtf8(document.toJson(QJsonDocument::Indented)));
         }
     file.close();
 }
