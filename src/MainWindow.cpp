@@ -237,6 +237,8 @@ void MainWindow::sendRemoveFile(QTreeWidgetItem *remove)
     QJsonDocument document;
     QJsonObject object;
 
+    if (!this->m_network->isConnected())
+        return;
     object.insert("type", "file");
     object.insert("subtype", "delete");
     object.insert("name", remove->text(COLUMN_PATH).replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
@@ -257,8 +259,9 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
                 this->sendRemoveFile(removes.at(0));
             removes.at(0)->setData(COLUMN_NAME, Qt::DisplayRole, fi.fileName());
             removes.at(0)->setData(COLUMN_PATH, Qt::DisplayRole, adds.at(0));
+            QFile file(adds.at(0));
             if (!removes.at(0)->font(COLUMN_NAME).strikeOut())
-                this->writeFileToWs(QFile(adds.at(0)));
+                this->sendWriteFile(file);
             return;
         }
         for (auto add : adds) {
@@ -270,8 +273,9 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
             newItem->setData(COLUMN_PATH, Qt::DisplayRole, add);
             item->addChild(newItem);
             this->checkTreeIgnored(false);
+            QFile file(add);
             if (!newItem->font(COLUMN_NAME).strikeOut())
-                this->writeFileToWs(QFile(add));
+                this->sendWriteFile(file);
         }
         for (auto remove : removes) {
             if (!remove->font(COLUMN_NAME).strikeOut())
@@ -296,13 +300,13 @@ void MainWindow::directoryWatchedChanged(const QString &path)
     }
 }
 
-void MainWindow::writeFileToWs(QFile &file)
+void MainWindow::sendWriteFile(QFile &file)
 {
     QJsonDocument document;
     QJsonObject object;
     QString content;
 
-    if (!file.open(QFile::ReadOnly))
+    if (!this->m_network->isConnected() || !file.open(QFile::ReadOnly))
         return;
     content = QString::fromStdString(file.readAll().toStdString());
     object.insert("type", "file");
@@ -337,7 +341,7 @@ void MainWindow::fileWatchedChanged(const QString &path)
         qDebug() << list;
         for (auto item : list)
             if (!item->font(COLUMN_NAME).strikeOut())
-                this->writeFileToWs(file);
+                this->sendWriteFile(file);
     }
 }
 
