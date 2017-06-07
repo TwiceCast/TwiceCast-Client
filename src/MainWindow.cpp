@@ -5,17 +5,22 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     m_ui(new Ui::MainWindow),
-    m_network(new NetworkManager),
+    m_network(new NetworkManager(this)),
     m_watch(this),
     m_creation(this),
     m_open(this),
     m_connect(this->m_network),
     m_ignoredAdder(this),
-    m_project(NULL)
+    m_project(NULL),
+    m_wsConnected(false)
 {
     this->m_ui->setupUi(this);
     this->m_ui->addButton->setEnabled(false);
+    this->m_ui->treeFile->setItemDelegate(new CustomStyle);
+    this->m_ui->PullRequestWidget->hide();
     this->m_ignoredAdder.setTreeFile(this->m_ui->treeFile);
+    this->m_network->moveToThread(&this->m_thread);
+    qRegisterMetaType<QNetworkAccessManager::Operation>("QNetworkAccessManager::Operation");
     connect(this->m_ui->actionNewProject, SIGNAL(triggered()), &this->m_creation, SLOT(show()));
     connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(init()));
     connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(show()));
@@ -29,31 +34,62 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this->m_ui->treeFile, SIGNAL(itemClicked(QTreeWidgetItem *, int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
+    connect(&this->m_connect, SIGNAL(request(QNetworkAccessManager::Operation,QString,QStringList,QStringList)),
+            this, SIGNAL(request(QNetworkAccessManager::Operation,QString,QStringList,QStringList)));
+    connect(&this->m_thread, SIGNAL(started()), this->m_network, SLOT(init()));
+    connect(&this->m_thread, SIGNAL(started()), this, SLOT(on_actionDisconnect_triggered()));
+    connect(&this->m_thread, SIGNAL(finished()), this->m_network, SLOT(deleteLater()));
+    this->m_thread.start();
     connect(this->m_network, SIGNAL(responseReady(QNetworkReply*)), this, SLOT(networkResponse(QNetworkReply*)));
-    connect(this->m_network, SIGNAL(wsConnected()), this, SLOT(authentificate()));
+    connect(this->m_network, SIGNAL(filePartSent(QString,int,int)), this, SLOT(setProgressFile(QString,int,int)));
+    connect(this->m_network, SIGNAL(wsConnection(bool)), this, SLOT(wsConnection(bool)));
+    connect(this->m_network, SIGNAL(requestError(NetworkResponse::NetworkError,QString)),
+            this, SLOT(requestFailed(NetworkResponse::NetworkError,QString)));
 }
 
 MainWindow::~MainWindow(void)
 {
     if (this->m_project != NULL)
         delete (this->m_project);
-    delete (this->m_network);
+    this->m_thread.exit();
     delete (this->m_ui);
 }
 
 void MainWindow::networkResponse(QNetworkReply *reply)
 {
+    QJsonDocument doc;
     QString result;
 
     if (reply->error() != QNetworkReply::NoError)
-        qDebug() << reply->errorString();
+        qDebug() << "ERROR : " << reply->errorString();
     else {
         while (!reply->atEnd())
             result += reply->readAll();
         qDebug() << "RESULT : ";
-        qDebug() << result;
+        qDebug().noquote() << result;
+        if (reply->request().url().toString().contains("/user/login")) {
+            doc = QJsonDocument::fromJson(result.toUtf8());
+            if (doc.isObject())
+                this->m_connect.failConnect(doc.object()["error"].toString());
+            else {
+                this->m_connect.accept();
+                emit request(QNetworkAccessManager::GetOperation, "/users/me", QStringList(), QStringList("token=" + result));
+            }
+        }
     }
     reply->deleteLater();
+}
+
+void MainWindow::setProgressFile(const QString &name, int part, int maxPart)
+{
+    QList<QTreeWidgetItem *> list = this->findItems(this->m_ui->treeFile->topLevelItem(0), COLUMN_PATH, name);
+
+    if (list.isEmpty())
+        return;
+    for (auto item : list) {
+        item->setData(COLUMN_PROGRESS, Qt::DisplayRole, static_cast<float>(part) / static_cast<float>(maxPart) * 100.0);
+        this->m_ui->treeFile->repaint();
+    }
 }
 
 void MainWindow::clearWatcher(void)
@@ -74,6 +110,8 @@ void MainWindow::initProject(void)
     this->m_ui->addButton->setEnabled(this->m_project != NULL && this->m_project->getPath() != "");
     this->m_ui->titleLabel->setText((this->m_project == NULL ? "Select a project" : this->m_project->getTitle()));
     this->m_ui->watchedDirectory->setText((this->m_project == NULL ? "None" : this->m_project->getPath()));
+    this->m_ui->actionPull_Request->setEnabled(this->m_project != NULL);
+    this->m_ui->actionPull_Request->setChecked(false);
 }
 
 void MainWindow::initWatcher(void)
@@ -139,12 +177,14 @@ QTreeWidgetItem *MainWindow::getTreeItem(const QString &path) const
     QTreeWidgetItem *item = new QTreeWidgetItem(QStringList(dir.dirName()));
 
     item->setData(COLUMN_PATH, Qt::DisplayRole, dir.path());
+    item->setData(COLUMN_PROGRESS, Qt::DisplayRole, -2);
     for (auto file : this->m_watch.files()) {
         QFileInfo f(file);
 
         if (f.absoluteDir() == dir.absolutePath()) {
             QTreeWidgetItem *tmp = new QTreeWidgetItem(QStringList(f.fileName()));
             tmp->setData(COLUMN_CHECKSTATE, Qt::CheckStateRole, Qt::Checked);
+            tmp->setData(COLUMN_PROGRESS, Qt::DisplayRole, 0);
             tmp->setData(COLUMN_PATH, Qt::DisplayRole, f.filePath());
             item->addChild(tmp);
         }
@@ -194,7 +234,7 @@ QList<QTreeWidgetItem *> MainWindow::getRemovedPaths(QTreeWidgetItem *item, cons
 QList<QTreeWidgetItem *> MainWindow::findItems(QTreeWidgetItem *item, int column, const QString &check) const
 {
     QList<QTreeWidgetItem *> list;
-    QRegExp regexp("*/" + this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_NAME) + "/" + check);
+    QRegExp regexp(QDir::cleanPath("*/" + this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_NAME) + "/" + check));
 
     regexp.setPatternSyntax(QRegExp::Wildcard);
     regexp.setCaseSensitivity(Qt::CaseSensitive);
@@ -220,30 +260,32 @@ int MainWindow::connectUser(void)
     return (this->m_connect.exec());
 }
 
+void MainWindow::wsConnection(bool connected)
+{
+    this->m_wsConnected = connected;
+    if (this->m_wsConnected)
+        this->authenticate();
+}
+
 void MainWindow::toggleConnection(void)
 {
     if (this->m_ui->startButton->text().contains("Start")) {
-        this->m_network->connectWs();
         this->m_ui->startButton->setText("Stop streaming files");
+        emit toggleWs(true);
     }
     else if (this->m_ui->startButton->text().contains("Stop")) {
-        this->m_network->disconnectWs();
         this->m_ui->startButton->setText("Start streaming files");
+        emit toggleWs(false);
     }
 }
 
-void MainWindow::sendRemoveFile(QTreeWidgetItem *remove)
+void MainWindow::requestFailed(NetworkResponse::NetworkError error, const QString &msg)
 {
-    QJsonDocument document;
-    QJsonObject object;
-
-    if (!this->m_network->isConnected())
-        return;
-    object.insert("type", "file");
-    object.insert("subtype", "delete");
-    object.insert("name", remove->text(COLUMN_PATH).replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
-    document.setObject(object);
-    this->m_network->sendTextMessage(QString::fromUtf8(document.toJson()));
+    qDebug() << msg;
+    if (error == NetworkResponse::NETWORK_NOT_CONNECTED) {
+        if (!this->m_connect.isHidden())
+            this->m_connect.tryReconnect();
+    }
 }
 
 void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QStringList &list)
@@ -256,12 +298,12 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
             QFileInfo fi(adds.at(0));
 
             if (!removes.at(0)->font(COLUMN_NAME).strikeOut())
-                this->sendRemoveFile(removes.at(0));
+                emit sendRemoveFile(removes.at(0)->text(COLUMN_PATH).replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_PATH) + "/"), ""));
             removes.at(0)->setData(COLUMN_NAME, Qt::DisplayRole, fi.fileName());
             removes.at(0)->setData(COLUMN_PATH, Qt::DisplayRole, adds.at(0));
-            QFile file(adds.at(0));
+            QFile *file = new QFile(adds.at(0));
             if (!removes.at(0)->font(COLUMN_NAME).strikeOut())
-                this->sendWriteFile(file);
+                emit sendWriteFile(file, file->fileName().replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_PATH) + "/"), ""));
             return;
         }
         for (auto add : adds) {
@@ -273,13 +315,13 @@ void MainWindow::checkPath(QTreeWidgetItem *item, const QString &path, const QSt
             newItem->setData(COLUMN_PATH, Qt::DisplayRole, add);
             item->addChild(newItem);
             this->checkTreeIgnored(false);
-            QFile file(add);
+            QFile *file = new QFile(add);
             if (!newItem->font(COLUMN_NAME).strikeOut())
-                this->sendWriteFile(file);
+                emit sendWriteFile(file, file->fileName().replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_PATH) + "/"), ""));
         }
         for (auto remove : removes) {
             if (!remove->font(COLUMN_NAME).strikeOut())
-                this->sendRemoveFile(remove);
+                emit sendRemoveFile(remove->text(COLUMN_PATH).replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_PATH) + "/"), ""));
             delete remove;
         }
     }
@@ -300,48 +342,19 @@ void MainWindow::directoryWatchedChanged(const QString &path)
     }
 }
 
-void MainWindow::sendWriteFile(QFile &file)
-{
-    QJsonDocument document;
-    QJsonObject object;
-    QString content;
-
-    if (!this->m_network->isConnected() || !file.open(QFile::ReadOnly))
-        return;
-    content = QString::fromStdString(file.readAll().toStdString());
-    object.insert("type", "file");
-    object.insert("subtype", "post");
-    object.insert("name", file.fileName().replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
-    if (content.length() <= 500) {
-        object.insert("content", content);
-        document.setObject(object);
-        this->m_network->sendTextMessage(QString::fromUtf8(document.toJson(QJsonDocument::Indented)));
-    }
-    else
-        for (int i = 0; i < content.length(); i += 500) {
-            object.insert("content", content.mid(i, 500));
-            object.insert("part", (i / 500) + 1);
-            object.insert("maxPart", (content.length() / 500) + 1);
-            document.setObject(object);
-            this->m_network->sendTextMessage(QString::fromUtf8(document.toJson(QJsonDocument::Indented)));
-        }
-    file.close();
-}
-
 void MainWindow::fileWatchedChanged(const QString &path)
 {
     QList<QTreeWidgetItem *> list;
-    QFile file(path);
+    QFile *file = new QFile(path);
 
-    qDebug() << "File " << path << " has been changed";
-    if (!file.exists())
+    if (!file->exists())
         this->m_watch.removePath(path);
-    else if (this->m_network->isConnected()) {
+    else if (this->m_wsConnected) {
         list = this->findItems(this->m_ui->treeFile->topLevelItem(0), COLUMN_PATH, path);
-        qDebug() << list;
+        QApplication::processEvents();
         for (auto item : list)
             if (!item->font(COLUMN_NAME).strikeOut())
-                this->sendWriteFile(file);
+                emit sendWriteFile(file, file->fileName().replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->text(COLUMN_PATH) + "/"), ""));
     }
 }
 
@@ -356,7 +369,7 @@ void MainWindow::addPathIgnored(QTreeWidgetItem *item, int column)
     if (item->data(column, Qt::CheckStateRole) == Qt::Unchecked) {
         QListWidgetItem *newItem = new QListWidgetItem(item->data(COLUMN_PATH, Qt::DisplayRole).toString());
 
-        newItem->setText(newItem->text().replace(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/", ""));
+        newItem->setText(newItem->text().replace(QDir::cleanPath(this->m_ui->treeFile->topLevelItem(0)->data(COLUMN_PATH, Qt::DisplayRole).toString() + "/"), ""));
         newItem->setData(Qt::UserRole, item->data(COLUMN_PATH, Qt::DisplayRole));
         this->m_ui->listIgnored->addItem(newItem);
     }
@@ -388,6 +401,8 @@ void MainWindow::resetFont(QTreeWidgetItem *item)
 
     font.setStrikeOut(false);
     item->setFont(COLUMN_NAME, font);
+    if (item->data(COLUMN_PROGRESS, Qt::DisplayRole) == -1)
+        item->setData(COLUMN_PROGRESS, Qt::DisplayRole, 0);
     if (item->data(COLUMN_CHECKSTATE, Qt::CheckStateRole) == Qt::Unchecked)
         item->setData(COLUMN_CHECKSTATE, Qt::CheckStateRole, Qt::Checked);
     for (int i = 0; i < item->childCount(); i++)
@@ -406,9 +421,13 @@ void MainWindow::applyFont(QTreeWidgetItem *item)
         fontChild.setStrikeOut(true);
         if (font.strikeOut()) {
             item->child(i)->setFont(COLUMN_NAME, fontChild);
+            if (item->child(i)->data(COLUMN_PROGRESS, Qt::DisplayRole) != -2)
+                item->child(i)->setData(COLUMN_PROGRESS, Qt::DisplayRole, -1);
             if (item->child(i)->data(COLUMN_CHECKSTATE, Qt::CheckStateRole) == Qt::Checked)
                 item->child(i)->setData(COLUMN_CHECKSTATE, Qt::CheckStateRole, Qt::Unchecked);
         }
+        else if (item->child(i)->data(COLUMN_PROGRESS, Qt::DisplayRole) == 0)
+            this->fileWatchedChanged(item->child(i)->data(COLUMN_PATH, Qt::DisplayRole).toString());
         allIgnored = allIgnored && item->child(i)->font(COLUMN_NAME).strikeOut();
         if (item->child(i)->childCount() > 0)
             this->applyFont(item->child(i));
@@ -423,6 +442,8 @@ void MainWindow::applyFont(QTreeWidgetItem *item)
 
 void MainWindow::uncheckedItemsRec(QTreeWidgetItem *elem)
 {
+    if (elem->data(COLUMN_PROGRESS, Qt::DisplayRole) != -2)
+        elem->setData(COLUMN_PROGRESS, Qt::DisplayRole, -1);
     if (elem->data(COLUMN_CHECKSTATE, Qt::CheckStateRole) == Qt::Checked)
         elem->setData(COLUMN_CHECKSTATE, Qt::CheckStateRole, Qt::Unchecked);
     for (int i = 0; i < elem->childCount(); i++)
@@ -459,7 +480,7 @@ void MainWindow::projectCreated(void)
 {
     Project *project = this->m_creation.getProject();
 
-    if (this->m_network->isConnected())
+    if (this->m_wsConnected)
         this->toggleConnection();
     if (project->getPath() == "")
         return;
@@ -483,7 +504,7 @@ void MainWindow::projectOpen(void)
 {
     Project *project = this->m_open.getProject();
 
-    if (this->m_network->isConnected())
+    if (this->m_wsConnected)
         this->toggleConnection();
     if (project == NULL)
         return;
@@ -504,17 +525,21 @@ void MainWindow::addIgnored(void)
     this->m_ui->listIgnored->addItem(this->m_ignoredAdder.getPath());
 }
 
-void MainWindow::authentificate(void)
+void MainWindow::authenticate(void)
 {
     QJsonDocument document;
-    QJsonObject object;
+    QJsonObject object, data, file;
 
-    object.insert("type", "file");
-    object.insert("subtype", "auth");
-    object.insert("username", "test");
-    object.insert("project", this->m_project->getTitle());
+    object.insert("type", "authenticate");
+    file.insert("username", "test");
+    file.insert("project", this->m_project->getTitle());
+    data.insert("file", file);
+    data.insert("token", "NoTokenYet");
+    object.insert("data", data);
     document.setObject(object);
-    this->m_network->sendTextMessage(QString::fromStdString(document.toJson().toStdString()));
+    emit sendText(QString::fromStdString(document.toJson().toStdString()));
+    for (auto file : this->m_watch.files())
+        this->fileWatchedChanged(file);
 }
 
 void MainWindow::on_actionExit_triggered(void)
@@ -531,7 +556,7 @@ void MainWindow::on_removeButton_pressed(void)
 void MainWindow::on_actionDisconnect_triggered(void)
 {
     this->hide();
-    if (this->m_network->isConnected())
+    if (this->m_wsConnected)
         this->toggleConnection();
     if (this->connectUser() == QDialog::Rejected) {
         this->close();
@@ -545,4 +570,12 @@ void MainWindow::on_actionDisconnect_triggered(void)
     this->initProject();
     this->m_ui->startButton->setEnabled(false);
     this->show();
+}
+
+void MainWindow::on_actionPull_Request_changed(void)
+{
+    if (this->m_ui->actionPull_Request->isChecked())
+        this->m_ui->PullRequestWidget->show();
+    else
+        this->m_ui->PullRequestWidget->hide();
 }

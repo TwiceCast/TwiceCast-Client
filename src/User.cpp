@@ -5,6 +5,11 @@ User::User(void)
 
 }
 
+User::~User(void)
+{
+
+}
+
 QString User::getToken(void) const
 {
     return (this->m_token);

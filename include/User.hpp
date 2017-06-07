@@ -7,6 +7,7 @@ class User
 {
 public:
     User(void);
+    ~User(void);
 
 public:
     QString getToken(void) const;

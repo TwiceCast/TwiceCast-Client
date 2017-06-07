@@ -1,19 +1,14 @@
+#include <QTextCodec>
+#include "MainWindow.hpp"
 #include "NetworkManager.hpp"
 
-NetworkManager::NetworkManager(QObject *parent) :
+NetworkManager::NetworkManager(MainWindow *main, QObject *parent) :
     QObject(parent),
-    m_network(new QNetworkAccessManager(this)),
-    m_ws(new QWebSocket),
-    m_timer(new QTimer),
-    m_baseUrlApi("http://37.187.99.70"),
-    m_baseUrlWs("ws://localhost:3005"),
+    m_main(main),
+    m_baseUrlApi("https://twicecast.ovh"),
+    m_baseUrlWs("ws://localhost:3005/"),
     m_strike(0)
 {
-    connect(this->m_network, SIGNAL(finished(QNetworkReply*)), this, SIGNAL(responseReady(QNetworkReply*)));
-    connect(this->m_ws, SIGNAL(textMessageReceived(QString)), this, SLOT(messageReceived(const QString &)));
-    connect(this->m_ws, SIGNAL(pong(quint64,QByteArray)), this, SLOT(pongReceived()));
-    connect(this->m_ws, SIGNAL(connected()), this, SIGNAL(wsConnected()));
-    connect(this->m_timer, SIGNAL(timeout()), this, SLOT(pingSending()));
 }
 
 NetworkManager::~NetworkManager(void)
@@ -23,59 +18,95 @@ NetworkManager::~NetworkManager(void)
     delete (this->m_ws);
 }
 
-QNetworkReply *NetworkManager::headRequest(const QString &url, const QStringList &) const
+void NetworkManager::init()
+{
+    this->m_network = new QNetworkAccessManager;
+    this->m_ws = new QWebSocket;
+    this->m_timer = new QTimer;
+
+    connect(m_main, SIGNAL(toggleWs(bool)), this, SLOT(toggleConnection(bool)));
+    connect(m_main, SIGNAL(sendText(QString)), this, SLOT(sendData(QString)));
+    connect(m_main, SIGNAL(sendWriteFile(QFile*,QString)), this, SLOT(sendWriteFile(QFile*,QString)));
+    connect(m_main, SIGNAL(sendRemoveFile(QString)), this, SLOT(sendRemoveFile(QString)));
+    connect(m_main, SIGNAL(request(QNetworkAccessManager::Operation,QString,QStringList,QStringList)),
+            this, SLOT(request(QNetworkAccessManager::Operation,QString,QStringList,QStringList)));
+    connect(this->m_network, SIGNAL(finished(QNetworkReply*)), this, SIGNAL(responseReady(QNetworkReply*)));
+    connect(this->m_ws, SIGNAL(textMessageReceived(QString)), this, SLOT(messageReceived(const QString &)));
+    connect(this->m_ws, SIGNAL(pong(quint64,QByteArray)), this, SLOT(pongReceived()));
+    connect(this->m_ws, SIGNAL(connected()), this, SIGNAL(wsConnection()));
+    connect(this->m_ws, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(errorWs(QAbstractSocket::SocketError)));
+    connect(this->m_timer, SIGNAL(timeout()), this, SLOT(pingSending()));
+}
+
+QNetworkReply *NetworkManager::headRequest(const QString &url, const QStringList &, const QStringList &headers) const
 {
     QNetworkRequest request;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     request.setUrl(this->m_baseUrlApi + url);
     return (this->m_network->head(request));
 }
 
-QNetworkReply *NetworkManager::putRequest(const QString &url, const QStringList &parameters) const
+QNetworkReply *NetworkManager::putRequest(const QString &url, const QStringList &parameters, const QStringList &headers) const
 {
     QNetworkRequest request;
     QString params;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     for (auto parameter : parameters)
         params += parameter + "\n";
     request.setUrl(this->m_baseUrlApi + url);
     return (this->m_network->put(request, params.toUtf8()));
 }
 
-QNetworkReply *NetworkManager::postRequest(const QString &url, const QStringList &parameters) const
+QNetworkReply *NetworkManager::postRequest(const QString &url, const QStringList &parameters, const QStringList &headers) const
 {
     QNetworkRequest request;
-    QString params;
+    QJsonDocument doc;
+    QJsonObject object;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     for (auto parameter : parameters)
-        params += parameter + "\n";
+        object.insert(parameter.mid(0, parameter.indexOf('=')), parameter.mid(parameter.indexOf('=') + 1));
     request.setUrl(this->m_baseUrlApi + url);
-    return (this->m_network->post(request, params.toUtf8()));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    doc.setObject(object);
+    qDebug().noquote() << doc.toJson();
+    return (this->m_network->post(request, doc.toJson()));
 }
 
-QNetworkReply *NetworkManager::getRequest(const QString &url, const QStringList &parameters) const
+QNetworkReply *NetworkManager::getRequest(const QString &url, const QStringList &parameters, const QStringList &headers) const
 {
     QNetworkRequest request;
     QString params;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     for (int i = 0; i < parameters.size(); i++)
-        params += parameters[i] + (i == 0 ? "?" : "&");
+        params += (i == 0 ? "?" : "&") + parameters[i];
     request.setUrl(this->m_baseUrlApi + url + params);
     return (this->m_network->get(request));
 }
 
-QNetworkReply *NetworkManager::deleteRequest(const QString &url, const QStringList &) const
+QNetworkReply *NetworkManager::deleteRequest(const QString &url, const QStringList &, const QStringList &headers) const
 {
     QNetworkRequest request;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     request.setUrl(this->m_baseUrlApi + url);
     return (this->m_network->deleteResource(request));
 }
 
-QNetworkReply *NetworkManager::customRequest(const QString &url, const QStringList &parameters) const
+QNetworkReply *NetworkManager::customRequest(const QString &url, const QStringList &parameters, const QStringList &headers) const
 {
     QNetworkRequest request;
 
+    for (auto header : headers)
+        request.setRawHeader(header.mid(0, header.indexOf('=')).toUtf8(), header.mid(header.indexOf('=') + 1).toUtf8());
     if (parameters.length() < 1)
         return (NULL);
     request.setUrl(this->m_baseUrlApi + url);
@@ -90,7 +121,7 @@ QNetworkReply *NetworkManager::customRequest(const QString &url, const QStringLi
 #endif
 }
 
-QNetworkReply *NetworkManager::request(const QString &url, const QStringList &parameters, QNetworkAccessManager::Operation op) const
+void NetworkManager::request(QNetworkAccessManager::Operation op, const QString &url, const QStringList &parameters, const QStringList &headers)
 {
     static OpFunc tab[OP_NUMBER] = {
         {QNetworkAccessManager::HeadOperation, &NetworkManager::headRequest},
@@ -101,13 +132,14 @@ QNetworkReply *NetworkManager::request(const QString &url, const QStringList &pa
         {QNetworkAccessManager::CustomOperation, &NetworkManager::customRequest}
     };
 
-    if (this->m_network->networkAccessible() == QNetworkAccessManager::NotAccessible)
-        return (NULL);
+    if (this->m_network->networkAccessible() == QNetworkAccessManager::NotAccessible) {
+        emit requestError(NetworkResponse::NETWORK_NOT_CONNECTED, "Network is not accessible");
+        return;
+    }
     for (int i = 0; i < OP_NUMBER; i++) {
         if (tab[i].op == op)
-            return ((this->*tab[i].func)(url, parameters));
+            (this->*tab[i].func)(url, parameters, headers);
     }
-    return (NULL);
 }
 
 qint64 NetworkManager::sendBinaryMessage(const QByteArray &msg) const
@@ -142,6 +174,7 @@ void NetworkManager::disconnectWs(void)
 {
     this->m_timer->stop();
     this->m_ws->close();
+    emit wsConnection(false);
 }
 
 void NetworkManager::pingSending(void)
@@ -158,7 +191,74 @@ void NetworkManager::pongReceived(void)
     this->m_strike = 0;
 }
 
+void NetworkManager::errorWs(QAbstractSocket::SocketError)
+{
+    qDebug() << this->m_ws->errorString();
+}
+
 void NetworkManager::messageReceived(const QString &msg)
 {
-    qDebug().noquote() << QString::fromStdString(QJsonDocument::fromJson(msg.toUtf8()).toJson(QJsonDocument::Indented).toStdString());
+    Q_UNUSED(msg);
+//    qDebug().noquote() << QString::fromStdString(QJsonDocument::fromJson(msg.toUtf8()).toJson(QJsonDocument::Indented).toStdString());
+}
+
+void NetworkManager::sendRemoveFile(const QString &remove)
+{
+    QJsonDocument document;
+    QJsonObject object, data;
+
+    if (!this->isConnected())
+        return;
+    object.insert("type", "file");
+    object.insert("subtype", "delete");
+    data.insert("name", remove);
+    object.insert("data", data);
+    document.setObject(object);
+    this->sendTextMessage(QString::fromUtf8(document.toJson()));
+}
+
+void NetworkManager::sendWriteFile(QFile *file, const QString &name)
+{
+    QJsonDocument document;
+    QJsonObject object, data;
+    QString content;
+
+    if (!this->isConnected() || !file->open(QFile::ReadOnly))
+        return;
+    content = QString::fromUtf8(file->readAll().toBase64());
+    file->close();
+    object.insert("type", "file");
+    object.insert("subtype", "post");
+    data.insert("name", name);
+    if (content.length() <= 500) {
+        data.insert("content", content);
+        object.insert("data", data);
+        document.setObject(object);
+        this->sendBinaryMessage(document.toJson(QJsonDocument::Indented));
+        emit filePartSent(name, 1, 1);
+    }
+    else
+        for (int i = 0; i < content.length(); i += 500) {
+            data.insert("content", content.mid(i, 500));
+            data.insert("part", (i / 500) + 1);
+            data.insert("maxPart", (content.length() / 500) + 1);
+            object.insert("data", data);
+            document.setObject(object);
+            this->sendBinaryMessage(document.toJson(QJsonDocument::Indented));
+            emit filePartSent(name, (i / 500) + 1, (content.length() / 500) + 1);
+        }
+}
+
+void NetworkManager::sendData(const QString &text)
+{
+    if (this->m_ws->isValid())
+        this->sendTextMessage(text);
+}
+
+void NetworkManager::toggleConnection(bool connect)
+{
+    if (!connect && this->m_ws->isValid())
+        this->disconnectWs();
+    else if (connect && !this->m_ws->isValid())
+        this->connectWs();
 }

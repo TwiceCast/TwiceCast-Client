@@ -22,7 +22,8 @@ SOURCES += src/main.cpp \
     src/NetworkManager.cpp \
     src/Project.cpp \
     src/ProjectOpenDialog.cpp \
-    src/User.cpp
+    src/User.cpp \
+    src/CustomStyle.cpp
 
 HEADERS  += include/MainWindow.hpp \
     include/ConnectionWindow.hpp \
@@ -31,7 +32,8 @@ HEADERS  += include/MainWindow.hpp \
     include/NetworkManager.hpp \
     include/Project.hpp \
     include/ProjectOpenDialog.hpp \
-    include/User.hpp
+    include/User.hpp \
+    include/CustomStyle.hpp
 
 FORMS    += ui/mainwindow.ui \
     ui/connectionwindow.ui \
