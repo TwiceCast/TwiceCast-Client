@@ -1,5 +1,5 @@
 #include "StreamsDialog.hpp"
-#include "ui_StreamsDialog.h"
+#include "ui_streamsdialog.h"
 
 StreamsDialog::StreamsDialog(QWidget *parent) :
     QDialog(parent),
