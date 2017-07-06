@@ -23,7 +23,9 @@ SOURCES += src/main.cpp \
     src/Project.cpp \
     src/ProjectOpenDialog.cpp \
     src/User.cpp \
-    src/CustomStyle.cpp
+    src/CustomStyle.cpp \
+    src/Stream.cpp \
+    src/StreamsDialog.cpp
 
 HEADERS  += include/MainWindow.hpp \
     include/ConnectionWindow.hpp \
@@ -33,13 +35,16 @@ HEADERS  += include/MainWindow.hpp \
     include/Project.hpp \
     include/ProjectOpenDialog.hpp \
     include/User.hpp \
-    include/CustomStyle.hpp
+    include/CustomStyle.hpp \
+    include/Stream.hpp \
+    include/StreamsDialog.hpp
 
 FORMS    += ui/mainwindow.ui \
     ui/connectionwindow.ui \
     ui/projectcreationdialog.ui \
     ui/ignoredadderdialog.ui \
-    ui/projectopendialog.ui
+    ui/projectopendialog.ui \
+    ui/streamsdialog.ui
 
 RESOURCES += pictures.qrc
 

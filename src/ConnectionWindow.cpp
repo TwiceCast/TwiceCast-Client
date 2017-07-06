@@ -40,10 +40,10 @@ void ConnectionWindow::on_ConnectionButton_clicked(void)
     QStringList list;
 
     list << "email=" + this->m_ui->UsernameEdit->text() << "password=" + this->m_ui->PasswordEdit->text();
-    emit request(QNetworkAccessManager::PostOperation, "/user/login", list);
+    emit request(QNetworkAccessManager::PostOperation, "/login", list);
     this->m_ui->InfoConnectLabel->setStyleSheet("#InfoConnectLabel { color : blue }");
     this->m_ui->InfoConnectLabel->setText("Connecting...");
-//    this->accept();
+    this->m_ui->PasswordEdit->setText("");
 }
 
 void ConnectionWindow::on_ExitButton_clicked(void)

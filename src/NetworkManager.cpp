@@ -6,7 +6,6 @@ NetworkManager::NetworkManager(MainWindow *main, QObject *parent) :
     QObject(parent),
     m_main(main),
     m_baseUrlApi("https://twicecast.ovh"),
-    m_baseUrlWs("ws://localhost:3005/"),
     m_strike(0)
 {
 }
@@ -24,7 +23,7 @@ void NetworkManager::init()
     this->m_ws = new QWebSocket;
     this->m_timer = new QTimer;
 
-    connect(m_main, SIGNAL(toggleWs(bool)), this, SLOT(toggleConnection(bool)));
+    connect(m_main, SIGNAL(toggleWs(bool, QString)), this, SLOT(toggleConnection(bool, QString)));
     connect(m_main, SIGNAL(sendText(QString)), this, SLOT(sendData(QString)));
     connect(m_main, SIGNAL(sendWriteFile(QFile*,QString)), this, SLOT(sendWriteFile(QFile*,QString)));
     connect(m_main, SIGNAL(sendRemoveFile(QString)), this, SLOT(sendRemoveFile(QString)));
@@ -34,7 +33,8 @@ void NetworkManager::init()
     connect(this->m_ws, SIGNAL(textMessageReceived(QString)), this, SLOT(messageReceived(const QString &)));
     connect(this->m_ws, SIGNAL(pong(quint64,QByteArray)), this, SLOT(pongReceived()));
     connect(this->m_ws, SIGNAL(connected()), this, SIGNAL(wsConnection()));
-    connect(this->m_ws, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(errorWs(QAbstractSocket::SocketError)));
+    connect(this->m_ws, static_cast<void(QWebSocket::*)(QAbstractSocket::SocketError)>(&QWebSocket::error),
+        [=](QAbstractSocket::SocketError error){ emit wsError(error, this->m_ws->errorString()); });
     connect(this->m_timer, SIGNAL(timeout()), this, SLOT(pingSending()));
 }
 
@@ -74,7 +74,6 @@ QNetworkReply *NetworkManager::postRequest(const QString &url, const QStringList
     request.setUrl(this->m_baseUrlApi + url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     doc.setObject(object);
-    qDebug().noquote() << doc.toJson();
     return (this->m_network->post(request, doc.toJson()));
 }
 
@@ -161,11 +160,11 @@ bool NetworkManager::isConnected(void) const
     return (this->m_ws->isValid());
 }
 
-void NetworkManager::connectWs(void)
+void NetworkManager::connectWs(const QString &url)
 {
     QNetworkRequest request;
 
-    request.setUrl(this->m_baseUrlWs);
+    request.setUrl((url == "" ? "http://localhost:3005" : url));
     this->m_ws->open(request);
     this->m_timer->start(10000);
 }
@@ -191,15 +190,10 @@ void NetworkManager::pongReceived(void)
     this->m_strike = 0;
 }
 
-void NetworkManager::errorWs(QAbstractSocket::SocketError)
-{
-    qDebug() << this->m_ws->errorString();
-}
-
 void NetworkManager::messageReceived(const QString &msg)
 {
-    Q_UNUSED(msg);
-//    qDebug().noquote() << QString::fromStdString(QJsonDocument::fromJson(msg.toUtf8()).toJson(QJsonDocument::Indented).toStdString());
+    qDebug().noquote() << msg;
+    //TODO : Manage Websocket result
 }
 
 void NetworkManager::sendRemoveFile(const QString &remove)
@@ -255,10 +249,10 @@ void NetworkManager::sendData(const QString &text)
         this->sendTextMessage(text);
 }
 
-void NetworkManager::toggleConnection(bool connect)
+void NetworkManager::toggleConnection(bool connect, const QString &url)
 {
     if (!connect && this->m_ws->isValid())
         this->disconnectWs();
     else if (connect && !this->m_ws->isValid())
-        this->connectWs();
+        this->connectWs(url);
 }

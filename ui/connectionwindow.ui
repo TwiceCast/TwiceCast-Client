@@ -96,7 +96,7 @@
         <item row="0" column="0">
          <widget class="QLabel" name="UsernameText">
           <property name="text">
-           <string>Username</string>
+           <string>Mail</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>

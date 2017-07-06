@@ -5,6 +5,7 @@
 #include <QDialog>
 
 #include "Project.hpp"
+#include "User.hpp"
 
 namespace Ui {
 class ProjectOpenDialog;
@@ -22,7 +23,7 @@ public:
     Project *getProject(void);
 
 public slots:
-    void init(void);
+    void init(User *);
 
 private slots:
     void on_pathButton_clicked(void);
