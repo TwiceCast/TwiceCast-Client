@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this->m_ui->actionNewProject, SIGNAL(triggered()), &this->m_creation, SLOT(show()));
     connect(this->m_ui->actionOpenProject, &QAction::triggered, [=]() { this->m_open.init(this->m_user); });
     connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(show()));
-    connect(this->m_ui->actionExit, SIGNAL(triggered()), &this, SLOT(close()));
+    connect(this->m_ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
     connect(this->m_ui->addButton, SIGNAL(pressed()), &this->m_ignoredAdder, SLOT(show()));
     connect(this->m_ui->startButton, SIGNAL(pressed()), this, SLOT(toggleConnection()));
     connect(&this->m_watch, SIGNAL(directoryChanged(QString)), this, SLOT(directoryWatchedChanged(QString)));
