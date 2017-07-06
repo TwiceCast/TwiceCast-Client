@@ -1,5 +1,6 @@
 #include "ProjectOpenDialog.hpp"
 #include "ui_projectopendialog.h"
+#include <QDebug>
 
 ProjectOpenDialog::ProjectOpenDialog(QWidget *parent) :
     QDialog(parent),
@@ -22,10 +23,10 @@ ProjectOpenDialog::~ProjectOpenDialog(void)
     delete (this->m_ui);
 }
 
-void ProjectOpenDialog::init(void)
+void ProjectOpenDialog::init(User *user)
 {
-    QFile conf(QCoreApplication::applicationDirPath() + "/.oldPath");
-    QTextStream stream(&conf);
+    QFile conf(QDir::cleanPath(QCoreApplication::applicationDirPath() + "/" + user->getUsername() + "/.oldPath"));
+    QTextStream stream;
     Project *project;
     QStringList olds;
     QString line;
@@ -33,6 +34,7 @@ void ProjectOpenDialog::init(void)
 
     if (!conf.open(QFile::ReadOnly))
         return;
+    stream.setDevice(&conf);
     while (!stream.atEnd()) {
         line = stream.readLine();
         if (line.trimmed() != "")

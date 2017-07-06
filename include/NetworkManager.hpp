@@ -13,6 +13,8 @@
 #include <QFile>
 #include <QTreeWidget>
 
+#include "Stream.hpp"
+
 class MainWindow;
 
 #define OP_NUMBER 6
@@ -27,6 +29,7 @@ namespace NetworkResponse {
 class NetworkManager : public QObject
 {
     Q_OBJECT
+
     struct OpFunc {
         QNetworkAccessManager::Operation op;
         QNetworkReply *(NetworkManager::*func)(const QString &, const QStringList &, const QStringList &) const;
@@ -48,17 +51,17 @@ private:
     qint64 sendBinaryMessage(const QByteArray &) const;
     qint64 sendTextMessage(const QString &) const;
     bool isConnected(void) const;
-    void connectWs(void);
+    void connectWs(const QString &);
     void disconnectWs(void);
 
 signals:
     void responseReady(QNetworkReply *);
     void requestError(NetworkResponse::NetworkError, const QString &);
     void wsConnection(bool connected = true);
+    void wsError(QAbstractSocket::SocketError, const QString &);
     void filePartSent(const QString &, int, int);
 
 private slots:
-    void errorWs(QAbstractSocket::SocketError);
     void pingSending(void);
     void pongReceived(void);
     void messageReceived(const QString &);
@@ -69,14 +72,15 @@ public slots:
     void sendRemoveFile(const QString &);
     void sendWriteFile(QFile *, const QString &);
     void sendData(const QString &);
-    void toggleConnection(bool);
+    void toggleConnection(bool, const QString &);
 
 private:
     MainWindow *m_main;
     QNetworkAccessManager *m_network;
     QWebSocket *m_ws;
     QTimer *m_timer;
-    QString m_baseUrlApi, m_baseUrlWs;
+    QString m_baseUrlApi;
+    Stream *m_stream;
     int m_strike;
 };
 

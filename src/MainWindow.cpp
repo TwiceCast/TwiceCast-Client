@@ -12,6 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
     m_connect(this->m_network),
     m_ignoredAdder(this),
     m_project(NULL),
+    m_user(NULL),
+    m_stream(NULL),
     m_wsConnected(false)
 {
     this->m_ui->setupUi(this);
@@ -22,8 +24,9 @@ MainWindow::MainWindow(QWidget *parent) :
     this->m_network->moveToThread(&this->m_thread);
     qRegisterMetaType<QNetworkAccessManager::Operation>("QNetworkAccessManager::Operation");
     connect(this->m_ui->actionNewProject, SIGNAL(triggered()), &this->m_creation, SLOT(show()));
-    connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(init()));
+    connect(this->m_ui->actionOpenProject, &QAction::triggered, [=]() { this->m_open.init(this->m_user); });
     connect(this->m_ui->actionOpenProject, SIGNAL(triggered()), &this->m_open, SLOT(show()));
+    connect(this->m_ui->actionExit, SIGNAL(triggered()), &this, SLOT(close()));
     connect(this->m_ui->addButton, SIGNAL(pressed()), &this->m_ignoredAdder, SLOT(show()));
     connect(this->m_ui->startButton, SIGNAL(pressed()), this, SLOT(toggleConnection()));
     connect(&this->m_watch, SIGNAL(directoryChanged(QString)), this, SLOT(directoryWatchedChanged(QString)));
@@ -43,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this->m_network, SIGNAL(responseReady(QNetworkReply*)), this, SLOT(networkResponse(QNetworkReply*)));
     connect(this->m_network, SIGNAL(filePartSent(QString,int,int)), this, SLOT(setProgressFile(QString,int,int)));
     connect(this->m_network, SIGNAL(wsConnection(bool)), this, SLOT(wsConnection(bool)));
+    connect(this->m_network, SIGNAL(wsError(QAbstractSocket::SocketError,QString)), this, SLOT(wsError(QAbstractSocket::SocketError, QString)));
     connect(this->m_network, SIGNAL(requestError(NetworkResponse::NetworkError,QString)),
             this, SLOT(requestFailed(NetworkResponse::NetworkError,QString)));
 }
@@ -51,30 +55,98 @@ MainWindow::~MainWindow(void)
 {
     if (this->m_project != NULL)
         delete (this->m_project);
+    if (this->m_user != NULL)
+        delete (this->m_user);
+    if (this->m_stream != NULL)
+        delete (this->m_stream);
     this->m_thread.exit();
     delete (this->m_ui);
 }
 
+void MainWindow::loginResult(const QJsonObject &object)
+{
+    QStringList headers;
+
+    if (!object["code"].isUndefined() && !object["code"].isNull()) {
+        this->m_connect.failConnect(object["description"].toString());
+        return;
+    }
+    this->m_user = new User(object["token"].toString());
+    headers.append("Authorization=" + this->m_user->getToken());
+    emit request(QNetworkAccessManager::GetOperation, "/users/" + this->m_user->getID(), QStringList(), headers);
+}
+
+void MainWindow::fetchUserResult(const QJsonObject &object)
+{
+    if (!object["code"].isUndefined() && !object["code"].isNull()) {
+        this->m_connect.failConnect(object["description"].toString());
+        return;
+    }
+    this->m_user->setUsername(object["name"].toString());
+    this->m_connect.accept();
+}
+
+void MainWindow::fetchStreamsResult(const QJsonObject &object)
+{
+    QList<Stream *> list;
+    StreamsDialog stDialog;
+
+    if (!object["code"].isUndefined() && !object["code"].isNull()) {
+        QMessageBox::critical(this, "Error", "An error has occured :\n" + object["description"].toString(), QMessageBox::Ok);
+        return;
+    }
+    for (int i = 0; i < object["stream_total"].toInt(); i++) {
+        Stream *stream = new Stream();
+
+        stream->setId(object["stream_list"].toArray()[i].toObject()["id"].toString());
+        stream->setName(object["stream_list"].toArray()[i].toObject()["title"].toString());
+        list.append(stream);
+    }
+    if (list.count() == 0) {
+        QMessageBox::critical(this, "No streams", "There is no stream to connect to", QMessageBox::Ok);
+        this->m_ui->startButton->setText("Start streaming files");
+        this->m_ui->startButton->setDisabled(false);
+        return;
+    }
+    stDialog.setStreamList(list);
+    if (stDialog.exec() == QDialog::Rejected)
+        return;
+    this->m_stream = stDialog.getSelected();
+    emit request(QNetworkAccessManager::GetOperation, "/streams/" + this->m_stream->getId() + "/repository",
+                 QStringList(), QStringList("Authorization=" + this->m_user->getToken()));
+}
+
+void MainWindow::fetchWebsocketResult(const QJsonObject &object)
+{
+    if (!object["code"].isUndefined() && !object["code"].isNull()) {
+        QMessageBox::critical(this, "Error", "An error has occured :\n" + object["description"].toString(), QMessageBox::Ok);
+        return;
+    }
+    if (this->m_stream == NULL)
+        return;
+    this->m_stream->setWsToken(object["token"].toString());
+    this->m_stream->setWsUrl(object["url"].toString());
+    emit toggleWs(true, this->m_stream->getWsUrl());
+}
+
 void MainWindow::networkResponse(QNetworkReply *reply)
 {
-    QJsonDocument doc;
-    QString result;
+    static LinkFunc links[LINK_NUMBER] = {
+        {"/login", &MainWindow::loginResult},
+        {"/users/[\\d]+", &MainWindow::fetchUserResult},
+        {"/streams/[\\d]+/repository", &MainWindow::fetchWebsocketResult},
+        {"/streams\\?uid=[\\d]+", &MainWindow::fetchStreamsResult}
+    };
+    QJsonObject object;
 
     if (reply->error() != QNetworkReply::NoError)
         qDebug() << "ERROR : " << reply->errorString();
-    else {
-        while (!reply->atEnd())
-            result += reply->readAll();
-        qDebug() << "RESULT : ";
-        qDebug().noquote() << result;
-        if (reply->request().url().toString().contains("/user/login")) {
-            doc = QJsonDocument::fromJson(result.toUtf8());
-            if (doc.isObject())
-                this->m_connect.failConnect(doc.object()["error"].toString());
-            else {
-                this->m_connect.accept();
-                emit request(QNetworkAccessManager::GetOperation, "/users/me", QStringList(), QStringList("token=" + result));
-            }
+    object = QJsonDocument::fromJson(reply->readAll()).object();
+    for (int i = 0; i < LINK_NUMBER; i++) {
+        QRegExp regexp(".*" + links[i].link);
+        if (regexp.exactMatch(reply->request().url().toString())) {
+            (this->*links[i].func)(object);
+            break;
         }
     }
     reply->deleteLater();
@@ -110,8 +182,8 @@ void MainWindow::initProject(void)
     this->m_ui->addButton->setEnabled(this->m_project != NULL && this->m_project->getPath() != "");
     this->m_ui->titleLabel->setText((this->m_project == NULL ? "Select a project" : this->m_project->getTitle()));
     this->m_ui->watchedDirectory->setText((this->m_project == NULL ? "None" : this->m_project->getPath()));
-    this->m_ui->actionPull_Request->setEnabled(this->m_project != NULL);
-    this->m_ui->actionPull_Request->setChecked(false);
+//    this->m_ui->actionPull_Request->setEnabled(this->m_project != NULL);
+//    this->m_ui->actionPull_Request->setChecked(false);
 }
 
 void MainWindow::initWatcher(void)
@@ -138,11 +210,13 @@ void MainWindow::initIgnored(void)
 
 void MainWindow::saveLastProject(void)
 {
-    QFile conf(QCoreApplication::applicationDirPath() + "/.oldPath");
+    QFile conf(QDir::cleanPath(QCoreApplication::applicationDirPath() + "/" + this->m_user->getUsername() + "/.oldPath"));
     QTextStream stream(&conf);
     QStringList olds;
     QString line;
 
+    if (!QDir(QCoreApplication::applicationDirPath() + "/" + this->m_user->getUsername()).exists())
+        QDir().mkpath(QCoreApplication::applicationDirPath() + "/" + this->m_user->getUsername());
     if (!conf.open(QFile::ReadWrite))
         return;
     while (!stream.atEnd()) {
@@ -263,24 +337,38 @@ int MainWindow::connectUser(void)
 void MainWindow::wsConnection(bool connected)
 {
     this->m_wsConnected = connected;
-    if (this->m_wsConnected)
+    if (this->m_wsConnected) {
+        this->m_ui->startButton->setText("Stop streaming files");
+        this->m_ui->startButton->setDisabled(false);
         this->authenticate();
+    }
+}
+
+void MainWindow::wsError(QAbstractSocket::SocketError error, const QString &errorString)
+{
+    qDebug() << error;
+    QMessageBox::critical(this, "Websocket error", "Cannot connect to websocket :\n" + errorString, QMessageBox::Ok);
+    this->m_ui->startButton->setDisabled(false);
+    this->m_ui->startButton->setText("Start streaming files");
 }
 
 void MainWindow::toggleConnection(void)
 {
     if (this->m_ui->startButton->text().contains("Start")) {
-        this->m_ui->startButton->setText("Stop streaming files");
-        emit toggleWs(true);
+        this->m_ui->startButton->setDisabled(true);
+        this->m_ui->startButton->setText("Connecting...");
+        emit request(QNetworkAccessManager::GetOperation, "/streams",
+                     QStringList("uid=" + this->m_user->getID()), QStringList("Authorization=" + this->m_user->getToken()));
     }
     else if (this->m_ui->startButton->text().contains("Stop")) {
         this->m_ui->startButton->setText("Start streaming files");
-        emit toggleWs(false);
+        emit toggleWs(false, "");
     }
 }
 
 void MainWindow::requestFailed(NetworkResponse::NetworkError error, const QString &msg)
 {
+    qDebug() << error;
     qDebug() << msg;
     if (error == NetworkResponse::NETWORK_NOT_CONNECTED) {
         if (!this->m_connect.isHidden())
@@ -531,20 +619,15 @@ void MainWindow::authenticate(void)
     QJsonObject object, data, file;
 
     object.insert("type", "authenticate");
-    file.insert("username", "test");
-    file.insert("project", this->m_project->getTitle());
+    file.insert("username", this->m_user->getUsername());
+    file.insert("project", this->m_stream->getName());
     data.insert("file", file);
-    data.insert("token", "NoTokenYet");
+    data.insert("token", this->m_stream->getWsToken());
     object.insert("data", data);
     document.setObject(object);
-    emit sendText(QString::fromStdString(document.toJson().toStdString()));
+    emit sendText(QString::fromUtf8(document.toJson()));
     for (auto file : this->m_watch.files())
         this->fileWatchedChanged(file);
-}
-
-void MainWindow::on_actionExit_triggered(void)
-{
-    this->close();
 }
 
 void MainWindow::on_removeButton_pressed(void)
@@ -566,7 +649,10 @@ void MainWindow::on_actionDisconnect_triggered(void)
     this->m_ui->listIgnored->clear();
     if (this->m_project != NULL)
         delete (this->m_project);
+    if (this->m_stream != NULL)
+        delete (this->m_stream);
     this->m_project = NULL;
+    this->m_stream = NULL;
     this->initProject();
     this->m_ui->startButton->setEnabled(false);
     this->show();
