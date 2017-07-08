@@ -67,6 +67,10 @@ void MainWindow::loginResult(const QJsonObject &object)
 {
     QStringList headers;
 
+    if (object.isEmpty()) {
+        this->m_connect.failConnect("Unknown error");
+        return;
+    }
     if (!object["code"].isUndefined() && !object["code"].isNull()) {
         this->m_connect.failConnect(object["description"].toString());
         return;
@@ -78,6 +82,10 @@ void MainWindow::loginResult(const QJsonObject &object)
 
 void MainWindow::fetchUserResult(const QJsonObject &object)
 {
+    if (object.isEmpty()) {
+        this->m_connect.failConnect("Unknown error");
+        return;
+    }
     if (!object["code"].isUndefined() && !object["code"].isNull()) {
         this->m_connect.failConnect(object["description"].toString());
         return;
@@ -91,6 +99,10 @@ void MainWindow::fetchStreamsResult(const QJsonObject &object)
     QList<Stream *> list;
     StreamsDialog stDialog;
 
+    if (object.isEmpty()) {
+        QMessageBox::critical(this, "Error", "An unknown error has occured", QMessageBox::Ok);
+        return;
+    }
     if (!object["code"].isUndefined() && !object["code"].isNull()) {
         QMessageBox::critical(this, "Error", "An error has occured :\n" + object["description"].toString(), QMessageBox::Ok);
         return;
@@ -109,8 +121,11 @@ void MainWindow::fetchStreamsResult(const QJsonObject &object)
         return;
     }
     stDialog.setStreamList(list);
-    if (stDialog.exec() == QDialog::Rejected)
+    if (stDialog.exec() == QDialog::Rejected) {
+        this->m_ui->startButton->setDisabled(false);
+        this->m_ui->startButton->setText("Start streaming files");
         return;
+    }
     this->m_stream = stDialog.getSelected();
     emit request(QNetworkAccessManager::GetOperation, "/streams/" + this->m_stream->getId() + "/repository",
                  QStringList(), QStringList("Authorization=" + this->m_user->getToken()));
@@ -118,6 +133,10 @@ void MainWindow::fetchStreamsResult(const QJsonObject &object)
 
 void MainWindow::fetchWebsocketResult(const QJsonObject &object)
 {
+    if (object.isEmpty()) {
+        QMessageBox::critical(this, "Error", "An unknown error has occured", QMessageBox::Ok);
+        return;
+    }
     if (!object["code"].isUndefined() && !object["code"].isNull()) {
         QMessageBox::critical(this, "Error", "An error has occured :\n" + object["description"].toString(), QMessageBox::Ok);
         return;
