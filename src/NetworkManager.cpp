@@ -5,7 +5,7 @@
 NetworkManager::NetworkManager(MainWindow *main, QObject *parent) :
     QObject(parent),
     m_main(main),
-    m_baseUrlApi("https://twicecast.ovh"),
+    m_baseUrlApi("https://api.twicecast.ovh"),
     m_strike(0)
 {
 }
