@@ -183,7 +183,7 @@
       <item>
        <widget class="QLabel" name="InscriptionLabel">
         <property name="text">
-         <string>&lt;a href=&quot;http://eip.epitech.eu/2018/twicecast/&quot;&gt;S'inscrire&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://twicecast.ovh/signup&quot;&gt;S'inscrire&lt;/a&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
@@ -209,7 +209,7 @@
       <item>
        <widget class="QLabel" name="ForgottenPasswordLabel">
         <property name="text">
-         <string>&lt;a href=&quot;http://eip.epitech.eu/2018/twicecast/&quot;&gt;Mot de passe oublié ?&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://twicecast.ovh/&quot;&gt;Mot de passe oublié ?&lt;/a&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
