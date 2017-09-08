@@ -28,7 +28,7 @@ class MainWindow : public QMainWindow
 
     struct LinkFunc {
         QString link;
-        void (MainWindow::*func)(const QJsonObject &);
+        void (MainWindow::*func)(const QJsonDocument &);
     };
 
 private:
@@ -40,10 +40,10 @@ private:
     bool matchIgnoredRec(QTreeWidgetItem *, const QRegExp &) const;
 
 private:
-    void loginResult(const QJsonObject &);
-    void fetchUserResult(const QJsonObject &);
-    void fetchWebsocketResult(const QJsonObject &);
-    void fetchStreamsResult(const QJsonObject &);
+    void loginResult(const QJsonDocument &);
+    void fetchUserResult(const QJsonDocument &);
+    void fetchWebsocketResult(const QJsonDocument &);
+    void fetchStreamsResult(const QJsonDocument &);
     void authenticate(void);
     void clearWatcher(void);
     void clearIgnored(void);

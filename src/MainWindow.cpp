@@ -63,9 +63,10 @@ MainWindow::~MainWindow(void)
     delete (this->m_ui);
 }
 
-void MainWindow::loginResult(const QJsonObject &object)
+void MainWindow::loginResult(const QJsonDocument &document)
 {
     QStringList headers;
+    QJsonObject object = document.object();
 
     if (object.isEmpty()) {
         this->m_connect.failConnect("Unknown error");
@@ -80,8 +81,10 @@ void MainWindow::loginResult(const QJsonObject &object)
     emit request(QNetworkAccessManager::GetOperation, "/users/" + this->m_user->getID(), QStringList(), headers);
 }
 
-void MainWindow::fetchUserResult(const QJsonObject &object)
+void MainWindow::fetchUserResult(const QJsonDocument &document)
 {
+    QJsonObject object = document.object();
+
     if (object.isEmpty()) {
         this->m_connect.failConnect("Unknown error");
         return;
@@ -94,24 +97,22 @@ void MainWindow::fetchUserResult(const QJsonObject &object)
     this->m_connect.accept();
 }
 
-void MainWindow::fetchStreamsResult(const QJsonObject &object)
+void MainWindow::fetchStreamsResult(const QJsonDocument &document)
 {
     QList<Stream *> list;
     StreamsDialog stDialog;
+    QJsonArray array;
 
-    if (object.isEmpty()) {
-        QMessageBox::critical(this, "Error", "An unknown error has occured", QMessageBox::Ok);
+    if (!document.object()["code"].isUndefined() && !document.object()["code"].isNull()) {
+        QMessageBox::critical(this, "Error", "An error has occured :\n" + document.object()["description"].toString(), QMessageBox::Ok);
         return;
     }
-    if (!object["code"].isUndefined() && !object["code"].isNull()) {
-        QMessageBox::critical(this, "Error", "An error has occured :\n" + object["description"].toString(), QMessageBox::Ok);
-        return;
-    }
-    for (int i = 0; i < object["stream_total"].toInt(); i++) {
+    array = document.array();
+    for (int i = 0; i < array.size(); i++) {
         Stream *stream = new Stream();
 
-        stream->setId(object["stream_list"].toArray()[i].toObject()["id"].toString());
-        stream->setName(object["stream_list"].toArray()[i].toObject()["title"].toString());
+        stream->setId(array[i].toObject()["id"].toString());
+        stream->setName(array[i].toObject()["title"].toString());
         list.append(stream);
     }
     if (list.count() == 0) {
@@ -131,8 +132,10 @@ void MainWindow::fetchStreamsResult(const QJsonObject &object)
                  QStringList(), QStringList("Authorization=" + this->m_user->getToken()));
 }
 
-void MainWindow::fetchWebsocketResult(const QJsonObject &object)
+void MainWindow::fetchWebsocketResult(const QJsonDocument &document)
 {
+    QJsonObject object = document.object();
+
     if (object.isEmpty()) {
         QMessageBox::critical(this, "Error", "An unknown error has occured", QMessageBox::Ok);
         return;
@@ -154,17 +157,20 @@ void MainWindow::networkResponse(QNetworkReply *reply)
         {"/login", &MainWindow::loginResult},
         {"/users/[\\d]+", &MainWindow::fetchUserResult},
         {"/streams/[\\d]+/repository", &MainWindow::fetchWebsocketResult},
-        {"/streams\\?uid=[\\d]+", &MainWindow::fetchStreamsResult}
+        {"/users/[\\d]+/streams", &MainWindow::fetchStreamsResult}
     };
-    QJsonObject object;
+    QJsonDocument document;
 
     if (reply->error() != QNetworkReply::NoError)
         qDebug() << "ERROR : " << reply->errorString();
-    object = QJsonDocument::fromJson(reply->readAll()).object();
+    if (!this->m_ui->startButton->isEnabled())
+        this->m_ui->startButton->setEnabled(true);
+    QByteArray response = reply->readAll();
+    document = QJsonDocument::fromJson(response);
     for (int i = 0; i < LINK_NUMBER; i++) {
         QRegExp regexp(".*" + links[i].link);
         if (regexp.exactMatch(reply->request().url().toString())) {
-            (this->*links[i].func)(object);
+            (this->*links[i].func)(document);
             break;
         }
     }
@@ -376,8 +382,8 @@ void MainWindow::toggleConnection(void)
     if (this->m_ui->startButton->text().contains("Start")) {
         this->m_ui->startButton->setDisabled(true);
         this->m_ui->startButton->setText("Connecting...");
-        emit request(QNetworkAccessManager::GetOperation, "/streams",
-                     QStringList("uid=" + this->m_user->getID()), QStringList("Authorization=" + this->m_user->getToken()));
+        emit request(QNetworkAccessManager::GetOperation, "/users/" + this->m_user->getID() + "/streams",
+                     QStringList(), QStringList("Authorization=" + this->m_user->getToken()));
     }
     else if (this->m_ui->startButton->text().contains("Stop")) {
         this->m_ui->startButton->setText("Start streaming files");

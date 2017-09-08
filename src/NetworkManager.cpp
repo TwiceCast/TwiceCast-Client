@@ -164,7 +164,7 @@ void NetworkManager::connectWs(const QString &url)
 {
     QNetworkRequest request;
 
-    request.setUrl((url == "" ? "http://localhost:3005" : url));
+    request.setUrl((url == "" ? "ws://localhost:3005" : url));
     this->m_ws->open(request);
     this->m_timer->start(10000);
 }
