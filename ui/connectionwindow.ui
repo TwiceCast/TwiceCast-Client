@@ -142,6 +142,13 @@
           </property>
          </widget>
         </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="RememberCheckBox">
+          <property name="text">
+           <string>Remember Me</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
@@ -183,7 +190,7 @@
       <item>
        <widget class="QLabel" name="InscriptionLabel">
         <property name="text">
-         <string>&lt;a href=&quot;https://twicecast.ovh/signup&quot;&gt;S'inscrire&lt;/a&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://twicecast.ovh/signup&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Sign up&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
@@ -209,7 +216,7 @@
       <item>
        <widget class="QLabel" name="ForgottenPasswordLabel">
         <property name="text">
-         <string>&lt;a href=&quot;https://twicecast.ovh/&quot;&gt;Mot de passe oublié ?&lt;/a&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://twicecast.ovh/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Forgotten password ?&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>

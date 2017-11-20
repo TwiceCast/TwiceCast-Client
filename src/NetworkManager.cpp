@@ -122,7 +122,7 @@ QNetworkReply *NetworkManager::customRequest(const QString &url, const QStringLi
 
 void NetworkManager::request(QNetworkAccessManager::Operation op, const QString &url, const QStringList &parameters, const QStringList &headers)
 {
-    static OpFunc tab[OP_NUMBER] = {
+    static RequestFunc tab[REQUEST_NUMBER] = {
         {QNetworkAccessManager::HeadOperation, &NetworkManager::headRequest},
         {QNetworkAccessManager::PutOperation, &NetworkManager::putRequest},
         {QNetworkAccessManager::PostOperation, &NetworkManager::postRequest},
@@ -135,7 +135,7 @@ void NetworkManager::request(QNetworkAccessManager::Operation op, const QString 
         emit requestError(NetworkResponse::NETWORK_NOT_CONNECTED, "Network is not accessible");
         return;
     }
-    for (int i = 0; i < OP_NUMBER; i++) {
+    for (int i = 0; i < REQUEST_NUMBER; i++) {
         if (tab[i].op == op)
             (this->*tab[i].func)(url, parameters, headers);
     }
@@ -164,24 +164,35 @@ void NetworkManager::connectWs(const QString &url)
 {
     QNetworkRequest request;
 
-    request.setUrl((url == "" ? "ws://localhost:3005" : url));
+//    request.setUrl((url == "" ? "ws://localhost:3005" : url));
+    request.setUrl(QString("ws://localhost:3005"));
     this->m_ws->open(request);
     this->m_timer->start(10000);
+    this->m_strike = 0;
+    this->m_filesParts = new QMap<QString, QString *>();
 }
 
 void NetworkManager::disconnectWs(void)
 {
     this->m_timer->stop();
     this->m_ws->close();
+    for (auto fileParts : this->m_filesParts->values())
+        delete fileParts;
+    delete [] this->m_filesParts;
     emit wsConnection(false);
 }
 
 void NetworkManager::pingSending(void)
 {
+    if (!this->m_ws->isValid())
+        return;
     this->m_ws->ping();
     this->m_strike++;
     if (this->m_strike >= 3) {
-        //TODO : NETWORK ERROR
+        this->m_timer->stop();
+        this->m_ws->close(QWebSocketProtocol::CloseCodeGoingAway, "No pong received for three times");
+        emit wsError(QAbstractSocket::NetworkError, "Server protocol seems to not match client protocol");
+        emit wsConnection(false);
     }
 }
 
@@ -190,10 +201,87 @@ void NetworkManager::pongReceived(void)
     this->m_strike = 0;
 }
 
+void NetworkManager::authenticated(const QJsonDocument &document)
+{
+    emit wsAuthenticated(document.object()["data"].toString());
+}
+
+void NetworkManager::fileSent(const QJsonDocument &document)
+{
+    emit wsFileSent(document.object()["data"].toObject()["file"].toString());
+}
+
+void NetworkManager::filePartReceived(const QJsonDocument &document)
+{
+    QJsonObject data = document.object()["data"].toObject();
+
+    if (!this->m_filesParts->contains(data["name"].toString())) {
+        this->m_filesParts->insert(data["name"].toString(), new QString[data["maxPart"].toInt()]);
+        for (int i = 0; i < data["maxPart"].toInt(); i++)
+            this->m_filesParts->value(data["name"].toString())[i] = "";
+    }
+    this->m_filesParts->value(data["name"].toString())[data["part"].toInt() - 1] = data["content"].toString();
+    QString final = "";
+    for (int i = 0; i < data["maxPart"].toInt(); i++) {
+        if (this->m_filesParts->value(data["name"].toString())[i] == "")
+            return;
+        final += this->m_filesParts->value(data["name"].toString())[i];
+    }
+    qDebug().noquote() << QString::fromUtf8(QByteArray::fromBase64(final.toUtf8()));
+}
+
+void NetworkManager::fileDeleted(const QJsonDocument &document)
+{
+    emit wsFileDeleted(document.object()["data"].toObject()["file"].toString());
+}
+
+void NetworkManager::pullRequestCreated(const QJsonDocument &document)
+{
+    QJsonDocument data;
+
+    data.setObject(document.object()["data"].toObject());
+    emit newPullRequest(data);
+}
+
+void NetworkManager::authenticationError(const QJsonDocument &document)
+{
+    emit wsFailAuth(document.object()["message"].toString());
+}
+
+void NetworkManager::writeFileError(const QJsonDocument &document)
+{
+    emit wsFailWrite(document.object()["file"].toString(), document.object()["message"].toString());
+}
+
+void NetworkManager::readFileError(const QJsonDocument &document)
+{
+    qDebug() << document;
+}
+
 void NetworkManager::messageReceived(const QString &msg)
 {
+    static WebsocketFunc tab[WEBSOCKET_NUMBER] = {
+        {401, "badAuthError", &NetworkManager::authenticationError},
+        {409, "failWriteFileError", &NetworkManager::writeFileError},
+        {409, "failReadFileError", &NetworkManager::readFileError},
+        {409, "failReadPathError", &NetworkManager::readFileError},
+        {200, "authentication", &NetworkManager::authenticated},
+        {200, "fileAuth", &NetworkManager::authenticated},
+        {200, "filePost", &NetworkManager::fileSent},
+        {200, "fileDeleted", &NetworkManager::fileDeleted},
+        {200, "pullRequestCreated", &NetworkManager::pullRequestCreated},
+        {200, "fileGet", &NetworkManager::filePartReceived}
+    };
+    QJsonDocument doc = QJsonDocument::fromJson(msg.toUtf8());
+    QJsonObject object;
+
     qDebug().noquote() << msg;
-    //TODO : Manage Websocket result
+    if (doc.isNull())
+        return;
+    object = doc.object();
+    for (int i = 0; i < WEBSOCKET_NUMBER; i++)
+        if (object["code"].toInt() == tab[i].code && object["type"].toString() == tab[i].type)
+            (this->*tab[i].func)(doc);
 }
 
 void NetworkManager::sendRemoveFile(const QString &remove)
@@ -245,7 +333,7 @@ void NetworkManager::sendWriteFile(QFile *file, const QString &name)
 
 void NetworkManager::sendData(const QString &text)
 {
-    if (this->m_ws->isValid())
+    if (this->isConnected())
         this->sendTextMessage(text);
 }
 

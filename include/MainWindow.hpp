@@ -13,6 +13,7 @@
 #include "IgnoredAdderDialog.hpp"
 #include "StreamsDialog.hpp"
 #include "CustomStyle.hpp"
+#include "CustomPRItem.hpp"
 #include "User.hpp"
 #include "Stream.hpp"
 
@@ -72,6 +73,16 @@ signals:
     void toggleWs(bool, const QString &);
 
 private slots:
+    void wsAuthenticated(const QString &);
+    void fileSent(const QString &);
+    void fileDeleted(const QString &);
+    void generatePullRequest(const QJsonDocument &);
+    void wsAuthenticatedFailed(const QString &);
+    void fileError(const QString &, const QString &);
+    void deleteMerge(const QModelIndex &);
+    void prepareMerge(const QModelIndex &);
+
+private slots:
     void wsConnection(bool connected = true);
     void wsError(QAbstractSocket::SocketError, const QString &);
     void toggleConnection(void);
@@ -88,6 +99,7 @@ private slots:
     void on_removeButton_pressed(void);
     void on_actionDisconnect_triggered(void);
     void on_actionPull_Request_changed(void);
+    void on_actionTrigger_triggered(void);
 
 private:
     Ui::MainWindow *m_ui;

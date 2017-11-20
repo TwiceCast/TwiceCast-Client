@@ -25,7 +25,8 @@ SOURCES += src/main.cpp \
     src/User.cpp \
     src/CustomStyle.cpp \
     src/Stream.cpp \
-    src/StreamsDialog.cpp
+    src/StreamsDialog.cpp \
+    src/CustomPRItem.cpp
 
 HEADERS  += include/MainWindow.hpp \
     include/ConnectionWindow.hpp \
@@ -37,7 +38,8 @@ HEADERS  += include/MainWindow.hpp \
     include/User.hpp \
     include/CustomStyle.hpp \
     include/Stream.hpp \
-    include/StreamsDialog.hpp
+    include/StreamsDialog.hpp \
+    include/CustomPRItem.hpp
 
 FORMS    += ui/mainwindow.ui \
     ui/connectionwindow.ui \
