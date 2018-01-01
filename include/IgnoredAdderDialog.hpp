@@ -4,7 +4,6 @@
 #include <QTreeWidget>
 #include <QDialog>
 #include <QPushButton>
-#include <QDebug>
 #include <QDir>
 #include "CustomStyle.hpp"
 

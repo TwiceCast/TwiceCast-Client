@@ -26,7 +26,8 @@ SOURCES += src/main.cpp \
     src/CustomStyle.cpp \
     src/Stream.cpp \
     src/StreamsDialog.cpp \
-    src/CustomPRItem.cpp
+    src/CustomPRItem.cpp \
+    src/MergeDialog.cpp
 
 HEADERS  += include/MainWindow.hpp \
     include/ConnectionWindow.hpp \
@@ -39,14 +40,16 @@ HEADERS  += include/MainWindow.hpp \
     include/CustomStyle.hpp \
     include/Stream.hpp \
     include/StreamsDialog.hpp \
-    include/CustomPRItem.hpp
+    include/CustomPRItem.hpp \
+    include/MergeDialog.hpp
 
 FORMS    += ui/mainwindow.ui \
     ui/connectionwindow.ui \
     ui/projectcreationdialog.ui \
     ui/ignoredadderdialog.ui \
     ui/projectopendialog.ui \
-    ui/streamsdialog.ui
+    ui/streamsdialog.ui \
+    ui/mergedialog.ui
 
 RESOURCES += pictures.qrc
 

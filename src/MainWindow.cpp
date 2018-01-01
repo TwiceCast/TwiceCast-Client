@@ -11,6 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_open(this),
     m_connect(this->m_network),
     m_ignoredAdder(this),
+    m_merger(this),
     m_project(NULL),
     m_user(NULL),
     m_stream(NULL),
@@ -39,11 +40,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&this->m_creation, SIGNAL(accepted()), this, SLOT(projectCreated()));
     connect(&this->m_open, SIGNAL(accepted()), this, SLOT(projectOpen()));
     connect(&this->m_ignoredAdder, SIGNAL(accepted()), this, SLOT(addIgnored()));
+    connect(&this->m_merger, SIGNAL(accepted()), this, SLOT(mergeFiles()));
     //UI CONNECT
     connect(this->m_ui->treeFile, SIGNAL(itemClicked(QTreeWidgetItem *, int)), this, SLOT(addPathIgnored(QTreeWidgetItem *, int)));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
     connect(this->m_ui->listIgnored->model(), SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(checkTreeIgnored()));
-    connect((CustomPRItem *)this->m_ui->PRList->itemDelegate(), SIGNAL(mergeDelete(QModelIndex)), this, SLOT(deleteMerge(QModelIndex)));
+    connect((CustomPRItem *)this->m_ui->PRList->itemDelegate(), SIGNAL(mergeDelete(QModelIndex)), this, SLOT(removeMerge(QModelIndex)));
     connect((CustomPRItem *)this->m_ui->PRList->itemDelegate(), SIGNAL(mergeRequest(QModelIndex)), this, SLOT(prepareMerge(QModelIndex)));
     //NETWORK CONNECT
     connect(&this->m_connect, SIGNAL(request(QNetworkAccessManager::Operation,QString,QStringList,QStringList)),
@@ -64,6 +66,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this->m_network, SIGNAL(newPullRequest(QJsonDocument)), this, SLOT(generatePullRequest(QJsonDocument)));
     connect(this->m_network, SIGNAL(wsFailAuth(QString)), this, SLOT(wsAuthenticatedFailed(QString)));
     connect(this->m_network, SIGNAL(wsFailWrite(QString, QString)), this, SLOT(fileError(QString, QString)));
+    connect(this->m_network, SIGNAL(prFileReceived(QString, QString)), &this->m_merger, SLOT(prepareFile(QString,QString)));
+    connect(this->m_network, SIGNAL(prFinished()), &this->m_merger, SLOT(show()));
 }
 
 MainWindow::~MainWindow(void)
@@ -222,6 +226,20 @@ void MainWindow::clearWatcher(void)
     if (listNotRemoved.size() != 0)
         listNotRemoved = this->m_watch.removePaths(listNotRemoved);
     this->m_ui->treeFile->clear();
+}
+
+void MainWindow::deleteMerge(int row)
+{
+    QJsonDocument doc;
+    QJsonObject data, object;
+
+    data.insert("id", this->m_ui->PRList->item(row)->data(Qt::UserRole).toString());
+    object.insert("data", data);
+    object.insert("type", "pullrequest");
+    object.insert("subtype", "delete");
+    doc.setObject(object);
+    emit sendText(QString::fromUtf8(doc.toJson()));
+    delete this->m_ui->PRList->item(row);
 }
 
 void MainWindow::initProject(void)
@@ -405,15 +423,14 @@ void MainWindow::fileDeleted(const QString &filename)
 
 void MainWindow::generatePullRequest(const QJsonDocument &doc)
 {
-    qDebug() << doc;
     QListWidgetItem *item = new QListWidgetItem();
-    QJsonObject data = doc.object()["data"].toObject();
+    QJsonObject data = doc.object();
 
     item->setData(Qt::DisplayRole, data["title"].toString());
     item->setData(Qt::UserRole, data["id"].toString());
     item->setData(Qt::UserRole + 1, data["owner"].toString());
     item->setData(Qt::UserRole + 2, data["description"].toString());
-    item->setData(Qt::UserRole + 3, data["date"].toString());
+    item->setData(Qt::UserRole + 3, QDateTime::fromMSecsSinceEpoch(data["date"].toVariant().toLongLong()));
     this->m_ui->PRList->insertItem(0, item);
 }
 
@@ -436,9 +453,9 @@ void MainWindow::fileError(const QString &filename, const QString &error)
     }
 }
 
-void MainWindow::deleteMerge(const QModelIndex &index)
+void MainWindow::removeMerge(const QModelIndex &index)
 {
-    delete this->m_ui->PRList->item(index.row());
+    this->deleteMerge(index.row());
 }
 
 void MainWindow::prepareMerge(const QModelIndex &index)
@@ -446,13 +463,14 @@ void MainWindow::prepareMerge(const QModelIndex &index)
     QJsonDocument document;
     QJsonObject data, pr;
 
-    qDebug() << "Prepare merge";
     data.insert("id", index.data(Qt::UserRole).toString());
     pr.insert("type", "pullrequest");
     pr.insert("subtype", "get");
     pr.insert("data", data);
     document.setObject(pr);
     emit sendText(QString::fromUtf8(document.toJson()));
+    this->m_merger.clean();
+    this->m_merger.init(index.data(Qt::UserRole).toString());
 }
 
 void MainWindow::wsConnection(bool connected)
@@ -463,15 +481,16 @@ void MainWindow::wsConnection(bool connected)
         this->m_ui->startButton->setDisabled(false);
         this->authenticate();
     }
-    else
+    else {
         this->m_ui->PRList->clear();
+        this->resetSync(this->m_ui->treeFile->topLevelItem(0));
+    }
 }
 
 void MainWindow::wsError(QAbstractSocket::SocketError error, const QString &errorString)
 {
     qDebug() << error;
     QMessageBox::critical(this, "Websocket error", "Cannot connect to websocket :\n" + errorString, QMessageBox::Ok);
-    this->m_ui->PRList->clear();
     this->m_ui->startButton->setDisabled(false);
     this->m_ui->startButton->setText("Start streaming files");
 }
@@ -652,6 +671,15 @@ void MainWindow::applyFont(QTreeWidgetItem *item)
         this->m_ui->treeFile->expandItem(item);
 }
 
+void MainWindow::resetSync(QTreeWidgetItem *elem)
+{
+    if (elem->data(COLUMN_PROGRESS, Qt::DisplayRole).toInt() >= 0)
+        elem->setData(COLUMN_PROGRESS, Qt::DisplayRole, 0);
+    if (elem->childCount() > 0)
+        for (int i = 0; i < elem->childCount(); i++)
+            this->resetSync(elem->child(i));
+}
+
 void MainWindow::uncheckedItemsRec(QTreeWidgetItem *elem)
 {
     if (elem->data(COLUMN_PROGRESS, Qt::DisplayRole) != -3)
@@ -730,11 +758,30 @@ void MainWindow::projectOpen(void)
     this->initIgnored();
     this->saveLastProject();
     this->m_ui->startButton->setEnabled(true);
+    this->m_ui->actionPull_Request->setChecked(true);
 }
 
 void MainWindow::addIgnored(void)
 {
     this->m_ui->listIgnored->addItem(this->m_ignoredAdder.getPath());
+}
+
+void MainWindow::mergeFiles(void)
+{
+    QMap<QString, QString> files = this->m_merger.getMergingContent();
+
+    for (auto filename : files.keys()) {
+        QFile file(QDir::cleanPath(this->m_project->getPath() + filename));
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            continue;
+        file.write(files.value(filename).toUtf8());
+        file.close();
+    }
+    for (int i = 0; i < this->m_ui->PRList->count(); i++)
+        if (this->m_ui->PRList->item(i)->data(Qt::UserRole).toString() == this->m_merger.getID()) {
+            this->deleteMerge(i);
+            break;
+        }
 }
 
 void MainWindow::authenticate(void)
@@ -788,18 +835,4 @@ void MainWindow::on_actionPull_Request_changed(void)
         this->m_ui->PullRequestWidget->show();
     else
         this->m_ui->PullRequestWidget->hide();
-}
-
-void MainWindow::on_actionTrigger_triggered(void)
-{
-    QListWidgetItem *item = new QListWidgetItem();
-
-    if (!this->m_wsConnected)
-        return;
-    item->setData(Qt::DisplayRole, "Testing");
-    item->setData(Qt::UserRole, "#165423");
-    item->setData(Qt::UserRole + 1, "Tester");
-    item->setData(Qt::UserRole + 2, "A little description and lorem ipsum dolor est");
-    item->setData(Qt::UserRole + 3, QDateTime::currentDateTime());
-    this->m_ui->PRList->insertItem(0, item);
 }

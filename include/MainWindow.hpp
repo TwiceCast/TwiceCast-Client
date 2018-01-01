@@ -12,6 +12,7 @@
 #include "ProjectOpenDialog.hpp"
 #include "IgnoredAdderDialog.hpp"
 #include "StreamsDialog.hpp"
+#include "MergeDialog.hpp"
 #include "CustomStyle.hpp"
 #include "CustomPRItem.hpp"
 #include "User.hpp"
@@ -48,6 +49,7 @@ private:
     void authenticate(void);
     void clearWatcher(void);
     void clearIgnored(void);
+    void deleteMerge(int);
     void initProject(void);
     void initWatcher(void);
     void initIgnored(void);
@@ -55,6 +57,7 @@ private:
     void removeByPath(QTreeWidgetItem *, const QString &);
     void checkPath(QTreeWidgetItem *, const QString &, const QStringList &);
     void applyFont(QTreeWidgetItem *);
+    void resetSync(QTreeWidgetItem *);
     void resetFont(QTreeWidgetItem *);
     void uncheckedItemsRec(QTreeWidgetItem *);
 
@@ -79,7 +82,7 @@ private slots:
     void generatePullRequest(const QJsonDocument &);
     void wsAuthenticatedFailed(const QString &);
     void fileError(const QString &, const QString &);
-    void deleteMerge(const QModelIndex &);
+    void removeMerge(const QModelIndex &);
     void prepareMerge(const QModelIndex &);
 
 private slots:
@@ -96,10 +99,10 @@ private slots:
     void projectCreated(void);
     void projectOpen(void);
     void addIgnored(void);
+    void mergeFiles(void);
     void on_removeButton_pressed(void);
     void on_actionDisconnect_triggered(void);
     void on_actionPull_Request_changed(void);
-    void on_actionTrigger_triggered(void);
 
 private:
     Ui::MainWindow *m_ui;
@@ -110,6 +113,7 @@ private:
     ProjectOpenDialog m_open;
     ConnectionWindow m_connect;
     IgnoredAdderDialog m_ignoredAdder;
+    MergeDialog m_merger;
     Project *m_project;
     User *m_user;
     Stream *m_stream;

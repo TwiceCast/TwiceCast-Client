@@ -3,7 +3,6 @@
 
 #include <QApplication>
 #include <QStyledItemDelegate>
-#include <QDebug>
 
 #define COLUMN_NAME 0
 #define COLUMN_PROGRESS 1

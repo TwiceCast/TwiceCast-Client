@@ -18,7 +18,7 @@
 class MainWindow;
 
 #define REQUEST_NUMBER 6
-#define WEBSOCKET_NUMBER 10
+#define WEBSOCKET_NUMBER 11
 
 namespace NetworkResponse {
     enum NetworkError {
@@ -62,6 +62,7 @@ private: // Response functions for Websocket messages
     void authenticationError(const QJsonDocument &);
     void writeFileError(const QJsonDocument &);
     void readFileError(const QJsonDocument &);
+    void pullRequestEnded(const QJsonDocument &);
 
 private: // Websocket functions
     qint64 sendBinaryMessage(const QByteArray &) const;
@@ -76,6 +77,8 @@ signals: // Network signals
     void wsConnection(bool connected = true);
     void wsError(QAbstractSocket::SocketError, const QString &);
     void filePartSent(const QString &, int, int);
+    void prFileReceived(const QString &, const QString &);
+    void prFinished();
     void wsAuthenticated(const QString &);
     void wsFileSent(const QString &);
     void wsFileDeleted(const QString &);

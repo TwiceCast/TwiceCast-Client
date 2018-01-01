@@ -225,15 +225,8 @@
     </property>
     <addaction name="actionPull_Request"/>
    </widget>
-   <widget class="QMenu" name="menuTesting">
-    <property name="title">
-     <string>Testing</string>
-    </property>
-    <addaction name="actionTrigger"/>
-   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
-   <addaction name="menuTesting"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionExit">
@@ -265,11 +258,6 @@
    </property>
    <property name="text">
     <string>Pull Request</string>
-   </property>
-  </action>
-  <action name="actionTrigger">
-   <property name="text">
-    <string>Trigger</string>
    </property>
   </action>
  </widget>

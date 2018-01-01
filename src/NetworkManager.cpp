@@ -34,7 +34,7 @@ void NetworkManager::init()
     connect(this->m_ws, SIGNAL(pong(quint64,QByteArray)), this, SLOT(pongReceived()));
     connect(this->m_ws, SIGNAL(connected()), this, SIGNAL(wsConnection()));
     connect(this->m_ws, static_cast<void(QWebSocket::*)(QAbstractSocket::SocketError)>(&QWebSocket::error),
-        [=](QAbstractSocket::SocketError error){ emit wsError(error, this->m_ws->errorString()); });
+        [=](QAbstractSocket::SocketError error){ emit wsConnection(false); emit wsError(error, this->m_ws->errorString()); });
     connect(this->m_timer, SIGNAL(timeout()), this, SLOT(pingSending()));
 }
 
@@ -164,8 +164,7 @@ void NetworkManager::connectWs(const QString &url)
 {
     QNetworkRequest request;
 
-//    request.setUrl((url == "" ? "ws://localhost:3005" : url));
-    request.setUrl(QString("ws://localhost:3005"));
+    request.setUrl((url == "" ? "ws://localhost:3005" : url));
     this->m_ws->open(request);
     this->m_timer->start(10000);
     this->m_strike = 0;
@@ -176,9 +175,6 @@ void NetworkManager::disconnectWs(void)
 {
     this->m_timer->stop();
     this->m_ws->close();
-    for (auto fileParts : this->m_filesParts->values())
-        delete fileParts;
-    delete [] this->m_filesParts;
     emit wsConnection(false);
 }
 
@@ -191,8 +187,8 @@ void NetworkManager::pingSending(void)
     if (this->m_strike >= 3) {
         this->m_timer->stop();
         this->m_ws->close(QWebSocketProtocol::CloseCodeGoingAway, "No pong received for three times");
-        emit wsError(QAbstractSocket::NetworkError, "Server protocol seems to not match client protocol");
         emit wsConnection(false);
+        emit wsError(QAbstractSocket::NetworkError, "Server protocol seems to not match client protocol");
     }
 }
 
@@ -228,6 +224,7 @@ void NetworkManager::filePartReceived(const QJsonDocument &document)
         final += this->m_filesParts->value(data["name"].toString())[i];
     }
     qDebug().noquote() << QString::fromUtf8(QByteArray::fromBase64(final.toUtf8()));
+    emit prFileReceived(data["name"].toString(), final.toUtf8());
 }
 
 void NetworkManager::fileDeleted(const QJsonDocument &document)
@@ -258,6 +255,12 @@ void NetworkManager::readFileError(const QJsonDocument &document)
     qDebug() << document;
 }
 
+void NetworkManager::pullRequestEnded(const QJsonDocument &)
+{
+    this->m_filesParts->clear();
+    emit prFinished();
+}
+
 void NetworkManager::messageReceived(const QString &msg)
 {
     static WebsocketFunc tab[WEBSOCKET_NUMBER] = {
@@ -270,7 +273,8 @@ void NetworkManager::messageReceived(const QString &msg)
         {200, "filePost", &NetworkManager::fileSent},
         {200, "fileDeleted", &NetworkManager::fileDeleted},
         {200, "pullRequestCreated", &NetworkManager::pullRequestCreated},
-        {200, "fileGet", &NetworkManager::filePartReceived}
+        {200, "fileGet", &NetworkManager::filePartReceived},
+        {200, "pullRequestGet", &NetworkManager::pullRequestEnded}
     };
     QJsonDocument doc = QJsonDocument::fromJson(msg.toUtf8());
     QJsonObject object;
