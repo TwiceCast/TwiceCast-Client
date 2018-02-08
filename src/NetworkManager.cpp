@@ -331,6 +331,7 @@ void NetworkManager::sendWriteFile(QFile *file, const QString &name)
             object.insert("data", data);
             document.setObject(object);
             this->sendBinaryMessage(document.toJson(QJsonDocument::Indented));
+            qDebug() << "Sending part " << i / 500 + 1 << " from file " << name;
             emit filePartSent(name, (i / 500) + 1, (content.length() / 500) + 1);
         }
 }

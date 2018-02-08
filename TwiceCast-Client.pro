@@ -53,7 +53,8 @@ FORMS    += ui/mainwindow.ui \
 
 RESOURCES += pictures.qrc
 
-INCLUDEPATH += include
+INCLUDEPATH += include \
+    libs
 
 Release:DEFINES += QT_NO_DEBUG_OUTPUT
 

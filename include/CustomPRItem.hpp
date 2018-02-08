@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QTextDocument>
 
 class CustomPRItem: public QStyledItemDelegate
 {

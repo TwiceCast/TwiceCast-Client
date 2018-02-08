@@ -249,6 +249,7 @@ void MainWindow::initProject(void)
     this->m_ui->watchedDirectory->setText((this->m_project == NULL ? "None" : this->m_project->getPath()));
     this->m_ui->actionPull_Request->setEnabled(this->m_project != NULL);
     this->m_ui->actionPull_Request->setChecked(false);
+    this->m_merger.setProjectPath(this->m_project == NULL ? NULL : this->m_project->getPath());
 }
 
 void MainWindow::initWatcher(void)
@@ -425,12 +426,16 @@ void MainWindow::generatePullRequest(const QJsonDocument &doc)
 {
     QListWidgetItem *item = new QListWidgetItem();
     QJsonObject data = doc.object();
+    QStringList files;
 
+    for (auto file : data["files"].toArray())
+        files << file.toString();
     item->setData(Qt::DisplayRole, data["title"].toString());
     item->setData(Qt::UserRole, data["id"].toString());
     item->setData(Qt::UserRole + 1, data["owner"].toString());
     item->setData(Qt::UserRole + 2, data["description"].toString());
     item->setData(Qt::UserRole + 3, QDateTime::fromMSecsSinceEpoch(data["date"].toVariant().toLongLong()));
+    item->setData(Qt::UserRole + 4, files);
     this->m_ui->PRList->insertItem(0, item);
 }
 
@@ -768,13 +773,13 @@ void MainWindow::addIgnored(void)
 
 void MainWindow::mergeFiles(void)
 {
-    QMap<QString, QString> files = this->m_merger.getMergingContent();
+    QMap<QString, QStringList> files = this->m_merger.getMergingContent();
 
     for (auto filename : files.keys()) {
         QFile file(QDir::cleanPath(this->m_project->getPath() + filename));
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
             continue;
-        file.write(files.value(filename).toUtf8());
+        file.write(QString(files.value(filename).join("\r\n")).toUtf8());
         file.close();
     }
     for (int i = 0; i < this->m_ui->PRList->count(); i++)
